@@ -138,7 +138,8 @@ def chat_endpoint():
 
             return jsonify({
                 "reply": reply,
-                "audio_url": f"/static/audio/{filename}"
+                "audio_url": f"/static/audio/{filename}",
+                "datetime": dt.isoformat()
             })
 
         # Một số câu hỏi thường gặp

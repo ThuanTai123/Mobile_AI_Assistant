@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "my-chatbot-project",
+    "slug": "my-chatbot-project",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "youtube",
+          "fb",
+          "zalo",
+          "googlegmail",
+          "snssdk1233",
+          "photos-redirect",
+          "App-Prefs",
+          "spotify",
+          "messenger"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.thuantai123.bot"
+    },
+    "android": {
+      "permissions": [
+        "CAMERA",
+        "FLASHLIGHT",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.thuantai123.bot"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "93da9c31-3a4c-4691-8c6f-077dc32a8d13"
+      }
+    },
+    "owner": "thuantai123"
+  }
+}

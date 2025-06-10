@@ -11,7 +11,15 @@ import {
   Vibration,
   SafeAreaView,
 } from 'react-native';
+import {
+  toggleFlashlight,
+  toggleNotification,
+  openNavigationBar,
+  increaseVolume,
+  decreaseVolume,
+} from './DeviceControls';
 import { Ionicons } from '@expo/vector-icons';
+import { checkAndOpenApp } from './AppLauncher'; // đường dẫn theo cấu trúc dự án của bạn
 import * as Speech from 'expo-speech';
 import { sendMessageToBot } from '../api/chat';
 import * as Notifications from 'expo-notifications';
@@ -22,7 +30,7 @@ interface Message {
   sender: 'user' | 'bot';
 }
 
-let messageId = 0;
+const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
 const ChatScreen = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -34,8 +42,8 @@ const ChatScreen = () => {
 
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
+        shouldShowAlert: false,
+        shouldPlaySound: true,  
         shouldSetBadge: false,
         shouldShowBanner: true,
         shouldShowList: true,
@@ -54,24 +62,101 @@ const ChatScreen = () => {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
+  const handleDeviceCommand = async (text: string): Promise<boolean> => {
+    const lower = text.toLowerCase();
+
+    if (lower.includes('mở thanh điều hướng') || lower.includes('thoát app')) {
+      openNavigationBar();
+      return true;
+    }
+    if (lower.includes('bật đèn flash')) {
+      await toggleFlashlight(true);
+      return true;
+    }
+    if (lower.includes('tắt đèn flash')) {
+      await toggleFlashlight(false);
+      return true;
+    }
+    if (lower.includes('bật thông báo')) {
+      toggleNotification(true);
+      return true;
+    }
+    if (lower.includes('tắt thông báo')) {
+      toggleNotification(false);
+      return true;
+    }
+    if (lower.includes('tăng âm lượng')) {
+      increaseVolume();
+      return true;
+    }
+    if (lower.includes('giảm âm lượng')) {
+      decreaseVolume();
+      return true;
+    }
+
+    return false;
+  };
+
+
   const handleSend = async (overrideText?: string) => {
     const textToSend = overrideText || inputText.trim();
     if (!textToSend) return;
+    
+    const isDeviceCommand = await handleDeviceCommand(textToSend);
+    if (isDeviceCommand) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          text: `🤖 Đã thực hiện lệnh: "${textToSend}"`,
+          sender: 'bot',
+        },
+      ]);
+      setInputText('');
+      scrollToBottom();
+      return;
+    }
+    
+    const { opened, appName } = await checkAndOpenApp(textToSend);
+      if (opened) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            text: `Đã mở ứng dụng ${appName} cho bạn.`,
+            sender: 'bot',
+          },
+        ]
+      );
+      return;
+    }
 
     const userMessage: Message = {
-      id: messageId++,
-      text: textToSend,
+      id: generateId(),      text: textToSend,
       sender: 'user',
     };
+    
 
     setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     scrollToBottom();
 
     const botResponse = await sendMessageToBot(textToSend);
+
+     // Kiểm tra nếu là lệnh nhắc, thì trích số giây và lên lịch
+    const isReminder = /đã tạo nhắc/i.test(botResponse.reply);
+    if (isReminder) {
+      const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i);
+      if (match) {
+        const delaySeconds = parseInt(match[1]);
+        if (!isNaN(delaySeconds)) {
+          await scheduleReminderNotification(delaySeconds, '⏰ Đã tạo nhắc nhở ' + textToSend);
+        }
+      }
+    }
+    
     const botMessage: Message = {
-      id: messageId++,
-      text: botResponse.reply,
+      id: generateId(),      text: botResponse.reply,
       sender: 'bot',
     };
 
@@ -79,12 +164,13 @@ const ChatScreen = () => {
     scrollToBottom();
 
     // Đọc phản hồi bằng giọng nói
-    Speech.speak(botResponse.reply, {
-      language: 'vi-VN',
-      pitch: 1,
-      rate: 1,
-    });
-
+    if (!isReminder){
+      Speech.speak(botResponse.reply, {
+        language: 'vi-VN',
+        pitch: 1,
+        rate: 1,
+      });
+    }
     // Nếu phản hồi có dạng nhắc việc, tìm số giây để đặt thông báo
     if (botResponse.reply.toLowerCase().includes('đã tạo nhắc')) {
       const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i);
@@ -111,8 +197,6 @@ const ChatScreen = () => {
     });
   };
 
-  // Nút test thủ công
-
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -137,7 +221,7 @@ const ChatScreen = () => {
 
 
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: Platform.OS === 'android' ? 40 : 0 }]}>
           <TextInput
             style={styles.textInput}
             value={inputText}
