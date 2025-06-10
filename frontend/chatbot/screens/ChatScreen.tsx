@@ -103,20 +103,15 @@ const ChatScreen = () => {
     const textToSend = overrideText || inputText.trim();
     if (!textToSend) return;
     
-    const isDeviceCommand = await handleDeviceCommand(textToSend);
-    if (isDeviceCommand) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          text: `🤖 Đã thực hiện lệnh: "${textToSend}"`,
-          sender: 'bot',
-        },
-      ]);
-      setInputText('');
-      scrollToBottom();
-      return;
-    }
+       const userMessage: Message = {
+      id: generateId(),
+      text: textToSend,
+      sender: 'user',
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputText('');
+    scrollToBottom();
     
     const { opened, appName } = await checkAndOpenApp(textToSend);
     if (opened) {
@@ -131,15 +126,22 @@ const ChatScreen = () => {
       return;
     }
 
-    const userMessage: Message = {
-      id: generateId(),
-      text: textToSend,
-      sender: 'user',
-    };
+    const isDeviceCommand = await handleDeviceCommand(textToSend);
+    if (isDeviceCommand) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          text: `🤖 Đã thực hiện lệnh: "${textToSend}"`,
+          sender: 'bot',
+        },
+      ]);
+      setInputText('');
+      scrollToBottom();
+      return;
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText('');
-    scrollToBottom();
+ 
 
     const botResponse = await sendMessageToBot(textToSend);
 
@@ -224,7 +226,7 @@ const ChatScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerText}>AI ASSISTANT</Text>
+          <Text style={styles.headerText}>RUBY ASSISTANT</Text>
         </View>
 
         {/* Messages */}
@@ -264,7 +266,7 @@ const ChatScreen = () => {
           {/* Bottom Icons */}
           <View style={styles.bottomIcons}>
             <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="camera-outline" size={28} color="#000" />
+              <Ionicons name="time-outline" size={28} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="mic-outline" size={28} color="#000" />

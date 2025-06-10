@@ -165,7 +165,7 @@ def chat_endpoint():
                     {
                         "role": "system",
                         "content": (
-                            "Bạn là trợ lý ảo nói tiếng Việt tự nhiên, thân thiện, chính xác. "
+                            "Bạn là Ruby, trợ lý ảo nói tiếng Việt tự nhiên, thân thiện, chính xác. "
                             "Trả lời ngắn gọn, dễ hiểu và đúng ngữ pháp."
                         )
                     },
