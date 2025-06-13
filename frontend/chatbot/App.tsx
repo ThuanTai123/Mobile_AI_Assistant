@@ -1,11 +1,11 @@
 import React from 'react';
-import ChatScreen from './screens/ChatScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ChatScreen from './screens/ChatScreen';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <ChatScreen />
+    <SafeAreaProvider>      
+          <ChatScreen/>            
     </SafeAreaProvider>
   );
 }

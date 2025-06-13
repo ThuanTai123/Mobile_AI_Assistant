@@ -24,6 +24,30 @@ import { checkAndOpenApp } from './AppLauncher';
 import * as Speech from 'expo-speech';
 import { sendMessageToBot } from '../api/chat';
 import * as Notifications from 'expo-notifications';
+import { PermissionsAndroid, Alert } from 'react-native';
+import useVoice from './useVoice';
+
+const requestMicrophonePermission = async () => {
+  if (Platform.OS === 'android') {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        {
+          title: 'Yêu cầu quyền Microphone',
+          message: 'Ứng dụng cần quyền truy cập micro để nhận dạng giọng nói.',
+          buttonNeutral: 'Hỏi lại sau',
+          buttonNegative: 'Từ chối',
+          buttonPositive: 'Đồng ý',
+        }
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert('Quyền bị từ chối', 'Không thể sử dụng chức năng ghi âm.');
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  }
+};
 
 interface Message {
   id: number;
@@ -37,10 +61,12 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
+  const { isListening, results, startListening, stopListening } = useVoice();
+
 
   useEffect(() => {
     requestPermissions();
-
+    requestMicrophonePermission();
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: false,
@@ -268,8 +294,14 @@ const ChatScreen = () => {
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="time-outline" size={28} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="mic-outline" size={28} color="#000" />
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={isListening ? stopListening : startListening}>
+              <Ionicons
+                name={isListening ? 'mic' : 'mic-outline'}
+                size={28}
+                color={isListening ? 'red' : '#000'}
+              />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="help-circle-outline" size={28} color="#000" />

@@ -87,7 +87,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.mychatbotproject"
+    namespace 'com.thuantai123.bot'
     defaultConfig {
         applicationId 'com.thuantai123.bot'
         minSdkVersion rootProject.ext.minSdkVersion

@@ -41,7 +41,19 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.thuantai123.bot"
+      "package": "com.thuantai123.bot",
+      "scheme": "mybot",
+      "queries": {
+        "intentFilters": [],
+        "schemes": [
+          "fb",
+          "youtube",
+          "zalo",
+          "spotify",
+          "googlegmail",
+          "snssdk1233"
+        ]
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -51,6 +63,9 @@
         "projectId": "93da9c31-3a4c-4691-8c6f-077dc32a8d13"
       }
     },
-    "owner": "thuantai123"
+    "owner": "thuantai123",
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }
