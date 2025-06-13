@@ -1,28 +1,66 @@
-import { Alert } from 'react-native';
+import Torch from 'react-native-torch';
+import SystemSetting from 'react-native-system-setting';
+import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
 
-let flashOn = false;
 let notificationOn = true;
 
-export const openNavigationBar = () => {
-  Alert.alert('Mở thanh điều hướng', 'Bạn đã trở về màn hình chính.');
-  Linking.openURL('home:'); // Chỉ là ví dụ, Expo Go không mở được thanh điều hướng thật
-};
-
+/**
+ * Bật hoặc tắt đèn flash thật
+ */
 export const toggleFlashlight = async (turnOn: boolean) => {
-  flashOn = turnOn;
-  Alert.alert('Đèn flash', flashOn ? 'Đèn flash đã bật' : 'Đèn flash đã tắt');
+  try {
+    await Torch.switchState(turnOn);
+    console.log(`Đèn flash đã ${turnOn ? 'bật' : 'tắt'}`);
+  } catch (err) {
+    console.warn('Lỗi bật/tắt đèn flash:', err);
+  }
 };
 
+/**
+ * Bật hoặc tắt thông báo (chỉ giả lập trạng thái)
+ */
 export const toggleNotification = (turnOn: boolean) => {
   notificationOn = turnOn;
-  Alert.alert('Thông báo', notificationOn ? 'Thông báo đã bật' : 'Thông báo đã tắt');
+  console.log(`Thông báo đã ${turnOn ? 'bật' : 'tắt'}`);
 };
 
-export const increaseVolume = () => {
-  Alert.alert('Âm lượng', 'Tăng âm lượng (giả lập)');
+/**
+ * Kiểm tra trạng thái thông báo hiện tại
+ */
+export const areNotificationsEnabled = () => notificationOn;
+
+/**
+ * Tăng âm lượng hệ thống
+ */
+export const increaseVolume = async () => {
+  try {
+    const current = await SystemSetting.getVolume();
+    const next = Math.min(current + 0.1, 1);
+    await SystemSetting.setVolume(next);
+    console.log('Tăng âm lượng lên:', next);
+  } catch (err) {
+    console.warn('Lỗi khi tăng âm lượng:', err);
+  }
 };
 
-export const decreaseVolume = () => {
-  Alert.alert('Âm lượng', 'Giảm âm lượng (giả lập)');
+/**
+ * Giảm âm lượng hệ thống
+ */
+export const decreaseVolume = async () => {
+  try {
+    const current = await SystemSetting.getVolume();
+    const next = Math.max(current - 0.1, 0);
+    await SystemSetting.setVolume(next);
+    console.log('Giảm âm lượng xuống:', next);
+  } catch (err) {
+    console.warn('Lỗi khi giảm âm lượng:', err);
+  }
+};
+
+/**
+ * Mở thanh điều hướng (chỉ có tác dụng gọi về màn hình chính nếu khả thi)
+ */
+export const openNavigationBar = () => {
+  Linking.openURL('home:'); // Android không hỗ trợ thực sự, dùng như placeholder
 };

@@ -10,14 +10,22 @@ export default function useVoice() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Voice.onSpeechStart = () => setIsListening(true);
-    Voice.onSpeechEnd = () => setIsListening(false);
+     Voice.onSpeechStart = () => {
+      console.log('🎙️ Bắt đầu nghe');
+      setIsListening(true);
+    };
+    Voice.onSpeechEnd = () => {
+      console.log('🛑 Dừng nghe');
+      setIsListening(false);
+    };
 
     Voice.onSpeechResults = (e: SpeechResultsEvent) => {
+      console.log('📄 Kết quả:', e.value);
       setResults(e.value ?? []);
     };
 
     Voice.onSpeechError = (e: SpeechErrorEvent) => {
+      console.log('❌ Lỗi nhận diện:', e.error?.message);
       setError(e.error?.message ?? 'Unknown error');
     };
 

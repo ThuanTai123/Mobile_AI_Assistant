@@ -12,13 +12,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import {
-  toggleFlashlight,
-  toggleNotification,
-  openNavigationBar,
-  increaseVolume,
-  decreaseVolume,
-} from './DeviceControls';
+import { handleDeviceCommand } from './DeviceCommandHandler';
 import { Ionicons } from '@expo/vector-icons';
 import { checkAndOpenApp } from './AppLauncher';
 import * as Speech from 'expo-speech';
@@ -76,6 +70,7 @@ const ChatScreen = () => {
         shouldShowList: true,
       }),
     });
+    
   }, []);
 
   const requestPermissions = async () => {
@@ -89,40 +84,7 @@ const ChatScreen = () => {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
-  const handleDeviceCommand = async (text: string): Promise<boolean> => {
-    const lower = text.toLowerCase();
-
-    if (lower.includes('mở thanh điều hướng') || lower.includes('thoát app')) {
-      openNavigationBar();
-      return true;
-    }
-    if (lower.includes('bật đèn flash')) {
-      await toggleFlashlight(true);
-      return true;
-    }
-    if (lower.includes('tắt đèn flash')) {
-      await toggleFlashlight(false);
-      return true;
-    }
-    if (lower.includes('bật thông báo')) {
-      toggleNotification(true);
-      return true;
-    }
-    if (lower.includes('tắt thông báo')) {
-      toggleNotification(false);
-      return true;
-    }
-    if (lower.includes('tăng âm lượng')) {
-      increaseVolume();
-      return true;
-    }
-    if (lower.includes('giảm âm lượng')) {
-      decreaseVolume();
-      return true;
-    }
-
-    return false;
-  };
+  
 
   const handleSend = async (overrideText?: string) => {
     Vibration.vibrate(50);
@@ -151,24 +113,16 @@ const ChatScreen = () => {
       ]);
       return;
     }
-
-    const isDeviceCommand = await handleDeviceCommand(textToSend);
-    if (isDeviceCommand) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          text: `🤖 Đã thực hiện lệnh: "${textToSend}"`,
-          sender: 'bot',
-        },
-      ]);
-      setInputText('');
-      scrollToBottom();
+    const deviceResponse = await handleDeviceCommand(textToSend);
+    if (deviceResponse) {
+      const botMessage: Message = {
+        id: generateId(),
+        text: deviceResponse,
+        sender: 'bot',
+      };
+      setMessages((prev) => [...prev, botMessage]);
       return;
     }
-
- 
-
     const botResponse = await sendMessageToBot(textToSend);
 
     // Kiểm tra nếu là lệnh nhắc, thì trích số giây và lên lịch
@@ -211,6 +165,7 @@ const ChatScreen = () => {
         }
       }
     }
+      
   };
 
   const scheduleReminderNotification = async (delaySeconds: number, message: string) => {
