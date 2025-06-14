@@ -1,33 +1,22 @@
+import Voice from '@react-native-voice/voice';
 import { useEffect, useState } from 'react';
-import Voice, {
-  SpeechErrorEvent,
-  SpeechResultsEvent,
-} from '@react-native-voice/voice';
 
-export default function useVoice() {
-  const [isListening, setIsListening] = useState<boolean>(false);
+const useVoice = () => {
+  const [isListening, setIsListening] = useState(false);
   const [results, setResults] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [partialTranscript, setPartialTranscript] = useState<string>(''); // 👈 thêm
 
   useEffect(() => {
-     Voice.onSpeechStart = () => {
-      console.log('🎙️ Bắt đầu nghe');
-      setIsListening(true);
+    Voice.onSpeechResults = (event) => {
+      setResults(event.value || []);
+    };
+    Voice.onSpeechPartialResults = (event) => {
+      setPartialTranscript(event.value?.[0] || ''); // 👈 bắt kết quả từng từ
     };
     Voice.onSpeechEnd = () => {
-      console.log('🛑 Dừng nghe');
-      setIsListening(false);
-    };
-
-    Voice.onSpeechResults = (e: SpeechResultsEvent) => {
-      console.log('📄 Kết quả:', e.value);
-      setResults(e.value ?? []);
-    };
-
-    Voice.onSpeechError = (e: SpeechErrorEvent) => {
-      console.log('❌ Lỗi nhận diện:', e.error?.message);
-      setError(e.error?.message ?? 'Unknown error');
-    };
+    setIsListening(false);
+    setPartialTranscript('');
+  };
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
@@ -35,20 +24,32 @@ export default function useVoice() {
   }, []);
 
   const startListening = async () => {
+    setResults([]);
+    setPartialTranscript(''); // reset
+    setIsListening(true);
     try {
       await Voice.start('vi-VN');
-    } catch (e: any) {
-      setError(e?.message || 'Không thể bắt đầu lắng nghe');
+    } catch (e) {
+      console.error('Voice start error:', e);
     }
   };
 
   const stopListening = async () => {
+    setIsListening(false);
     try {
       await Voice.stop();
-    } catch (e: any) {
-      setError(e?.message || 'Không thể dừng lắng nghe');
+    } catch (e) {
+      console.error('Voice stop error:', e);
     }
   };
 
-  return { isListening, results, error, startListening, stopListening };
-}
+  return {
+    isListening,
+    results,
+    partialTranscript, // 👈 export biến mới
+    startListening,
+    stopListening,
+  };
+};
+
+export default useVoice;

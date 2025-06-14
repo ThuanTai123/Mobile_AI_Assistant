@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "my-chatbot-project",
-    "slug": "my-chatbot-project",
+    "name": "Ruby_Assistant",
+    "slug": "Ruby_Assistant",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {

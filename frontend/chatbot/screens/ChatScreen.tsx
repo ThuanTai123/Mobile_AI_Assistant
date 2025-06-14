@@ -12,6 +12,12 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import {
+  setupNotificationChannel,
+  requestNotificationPermission,
+  setupNotificationHandler,
+  scheduleReminderNotification
+} from './Notifications'; 
 import { handleDeviceCommand } from './DeviceCommandHandler';
 import { Ionicons } from '@expo/vector-icons';
 import { checkAndOpenApp } from './AppLauncher';
@@ -20,6 +26,9 @@ import { sendMessageToBot } from '../api/chat';
 import * as Notifications from 'expo-notifications';
 import { PermissionsAndroid, Alert } from 'react-native';
 import useVoice from './useVoice';
+import SpeakingMicIcon from './SpeakingMicIcon';
+
+
 
 const requestMicrophonePermission = async () => {
   if (Platform.OS === 'android') {
@@ -52,26 +61,33 @@ interface Message {
 const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
 const ChatScreen = () => {
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
-  const { isListening, results, startListening, stopListening } = useVoice();
+  const { isListening, results,partialTranscript, startListening, stopListening } = useVoice();
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const handleVoiceResult = (text: string) => {
+  console.log('📤 Gửi voice:', text);
+  setInputText(text);    // Hiển thị vào input (nếu cần)
+};
 
 
   useEffect(() => {
     requestPermissions();
     requestMicrophonePermission();
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: false,
-        shouldPlaySound: true,  
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-    
+    setupNotificationHandler();
+    setupNotificationChannel();
+    requestNotificationPermission();
   }, []);
+  useEffect(() => {
+  if (results.length > 0) {
+    const latestText = results[0];
+    handleVoiceResult(latestText);
+  }
+}, [results]);
+
 
   const requestPermissions = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
@@ -90,7 +106,6 @@ const ChatScreen = () => {
     Vibration.vibrate(50);
     const textToSend = overrideText || inputText.trim();
     if (!textToSend) return;
-    
        const userMessage: Message = {
       id: generateId(),
       text: textToSend,
@@ -121,9 +136,21 @@ const ChatScreen = () => {
         sender: 'bot',
       };
       setMessages((prev) => [...prev, botMessage]);
-      return;
     }
     const botResponse = await sendMessageToBot(textToSend);
+    const scheduleReminderNotification = async (delaySeconds: number, message: string) => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '📌 Nhắc nhở',
+        body: message,
+        sound: 'default',
+      },
+      trigger: {
+        seconds: delaySeconds,  // ✅ Đảm bảo delay đúng số giây
+        channelId: 'reminder',  // ✅ Quan trọng cho Android 13+
+      },// as Notifications.TimeIntervalTriggerInput
+    });
+  };//Tạo thông báo
 
     // Kiểm tra nếu là lệnh nhắc, thì trích số giây và lên lịch
     const isReminder = /đã tạo nhắc/i.test(botResponse.reply);
@@ -132,7 +159,10 @@ const ChatScreen = () => {
       if (match) {
         const delaySeconds = parseInt(match[1]);
         if (!isNaN(delaySeconds)) {
-          await scheduleReminderNotification(delaySeconds, '⏰ Đã tạo nhắc nhở ' + textToSend);
+          await scheduleReminderNotification(
+            delaySeconds, 
+            '⏰ Nhắc nhở ' + textToSend
+          );
         }
       }
     }
@@ -142,45 +172,27 @@ const ChatScreen = () => {
       text: botResponse.reply,
       sender: 'bot',
     };
-
+    
     setMessages((prev) => [...prev, botMessage]);
     scrollToBottom();
-
-    // Đọc phản hồi bằng giọng nói
     if (!isReminder) {
+      setIsSpeaking(true);
       Speech.speak(botResponse.reply, {
-        language: 'vi-VN',
-        pitch: 1,
-        rate: 1,
-      });
-    }
-
-    // Nếu phản hồi có dạng nhắc việc, tìm số giây để đặt thông báo
-    if (botResponse.reply.toLowerCase().includes('đã tạo nhắc')) {
-      const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i);
-      if (match) {
-        const delaySeconds = parseInt(match[1]);
-        if (!isNaN(delaySeconds)) {
-          scheduleReminderNotification(delaySeconds, '⏰ Nhắc bạn: ' + textToSend);
-        }
-      }
-    }
-      
-  };
-
-  const scheduleReminderNotification = async (delaySeconds: number, message: string) => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Nhắc nhở',
-        body: message,
-        sound: true,
+      language: 'vi-VN',
+      pitch: 1,
+      rate: 1,
+      onDone: () => {
+        setIsSpeaking(false);
+        setIsRecording(false);
       },
-      trigger: {
-        seconds: delaySeconds,
-        repeats: false,
-      } as Notifications.TimeIntervalTriggerInput
-    });
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+      });
+      return;
+    }
+   
   };
+
 
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[
@@ -243,20 +255,31 @@ const ChatScreen = () => {
               <Ionicons name="send" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          
+          {isListening && partialTranscript !== '' && (
+            <View style={{ padding: 8, paddingHorizontal: 12 }}>
+              <Text style={{ fontStyle: 'italic', color: '#555' }}>
+                🎙️ Đang nói: <Text style={{ fontWeight: '600' }}>{partialTranscript}</Text>
+              </Text>
+            </View>
+          )}
           {/* Bottom Icons */}
           <View style={styles.bottomIcons}>
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="time-outline" size={28} color="#000" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={isListening ? stopListening : startListening}>
-              <Ionicons
-                name={isListening ? 'mic' : 'mic-outline'}
-                size={28}
-                color={isListening ? 'red' : '#000'}
-              />
+              onPress={isListening ? stopListening : startListening}
+            >
+              {isSpeaking ? (
+                <SpeakingMicIcon isSpeaking={true} />
+              ) : (
+                <Ionicons
+                  name={isListening ? 'mic' : 'mic-outline'}
+                  size={28}
+                  color={isListening ? 'red' : '#000'}
+                />
+              )}
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="help-circle-outline" size={28} color="#000" />

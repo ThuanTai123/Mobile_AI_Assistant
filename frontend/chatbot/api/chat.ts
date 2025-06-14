@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // ⚠️ Đổi IP này thành IP nội bộ của máy chạy Flask backend (ví dụ: 192.168.1.5:5000)
-const API_URL = 'http://192.168.30.187:5000'; // ✅ Đúng IP đang chạy Flask
+const API_URL = 'http://192.168.1.208:5000'; // Địa chỉ thay đổi khi đổi wifi
 
 
 
