@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from gtts import gTTS
 import threading
 import time
+import handle_device_command
 
 # Load API key từ .env
 load_dotenv()
@@ -122,7 +123,14 @@ def chat_endpoint():
 
         now = datetime.now()
 
-        # Tạo nhắc nhở từ văn bản
+        # 1. Kiểm tra lệnh điều khiển thiết bị
+        device_response = handle_device_command(user_message)
+        if device_response:
+            return jsonify({
+                "reply": device_response
+            })
+
+        # 2. Tạo nhắc nhở từ văn bản
         dt, content = parse_reminder(user_message)
         if dt:
             new_appt = Appointment(datetime=dt, description=content)
@@ -142,7 +150,7 @@ def chat_endpoint():
                 "datetime": dt.isoformat()
             })
 
-        # Một số câu hỏi thường gặp
+        # 3. Câu hỏi thường gặp
         if "mấy giờ" in user_message or "bây giờ là mấy giờ" in user_message:
             reply = f"Bây giờ là {now.strftime('%H:%M:%S')}"
         elif "ngày mấy" in user_message or "hôm nay là ngày mấy" in user_message:
@@ -154,7 +162,7 @@ def chat_endpoint():
         elif "mở facebook" in user_message:
             return jsonify({"reply": "Đây là Facebook!", "open_url": "https://www.facebook.com"})
         else:
-            # Gửi đến OpenRouter (ChatGPT)
+            # 4. Gửi đến OpenRouter (ChatGPT)
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
@@ -178,6 +186,7 @@ def chat_endpoint():
             data = response.json()
             reply = data["choices"][0]["message"]["content"]
 
+        # Chuyển văn bản thành giọng nói
         tts = gTTS(text=reply, lang="vi", tld="com.vn")
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join(AUDIO_FOLDER, filename)
@@ -192,6 +201,7 @@ def chat_endpoint():
     except Exception as e:
         print("Lỗi:", str(e))
         return jsonify({"reply": "Xin lỗi, có lỗi xảy ra", "error": str(e)}), 500
+
 
 @app.route("/static/audio/<filename>")
 def serve_audio(filename):
