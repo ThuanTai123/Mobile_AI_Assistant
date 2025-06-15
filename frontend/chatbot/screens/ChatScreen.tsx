@@ -16,7 +16,7 @@ import {
   setupNotificationChannel,
   requestNotificationPermission,
   setupNotificationHandler,
-  scheduleReminderNotification
+  scheduleReminderNotification,
 } from './Notifications'; 
 import { handleDeviceCommand } from './DeviceCommandHandler';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,19 +74,27 @@ const ChatScreen = () => {
 };
 
 
-  useEffect(() => {
+  useEffect(() => {  
+    const init = async () => {
+    await setupNotificationHandler();
+    await requestNotificationPermission();  
+    await setupNotificationChannel(); 
+   setTimeout(async () => {
+      const id = await scheduleReminderNotification(15, "🔔 Thông báo test sau 15 giây");
+      console.log("📋 Đã đặt lịch với ID:", id);
+    }, 1000);
+
+    };
     requestPermissions();
     requestMicrophonePermission();
-    setupNotificationHandler();
-    setupNotificationChannel();
-    requestNotificationPermission();
+    init();
   }, []);
   useEffect(() => {
-  if (results.length > 0) {
-    const latestText = results[0];
-    handleVoiceResult(latestText);
-  }
-}, [results]);
+    if (results.length > 0) {
+      const latestText = results[0];
+      handleVoiceResult(latestText);
+    }
+  }, [results]);
 
 
   const requestPermissions = async () => {
@@ -157,8 +165,7 @@ const ChatScreen = () => {
       const delaySeconds = parseInt(match[1]);
       if (!isNaN(delaySeconds)) {
         await scheduleReminderNotification(
-          delaySeconds, 
-          '⏰ Nhắc nhở ' + textToSend
+          delaySeconds,  textToSend
         );
       }
     }

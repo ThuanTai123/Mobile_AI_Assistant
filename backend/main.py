@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 from gtts import gTTS
 import threading
 import time
-import handle_device_command
+from handle_device_command import handle_device_command
+
 
 # Load API key từ .env
 load_dotenv()
