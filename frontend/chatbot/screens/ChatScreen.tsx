@@ -195,13 +195,13 @@ const ChatScreen = () => {
     const botResponse = await sendMessageToBot(textToSend)
     const isReminder = /đã tạo nhắc/i.test(botResponse.reply)
 
-    // ✅ Kiểm tra nếu là lệnh tạo ghi chú
+    // ✅ Kiểm tra nếu là lệnh tạo ghi chú - FIXED
     const isCreateNote = /tạo ghi chú/i.test(textToSend)
     if (isCreateNote) {
       // Trích xuất nội dung ghi chú từ tin nhắn
       const noteContent = textToSend.replace(/tạo ghi chú/i, "").trim()
       if (noteContent) {
-        // Lưu ghi chú vào database
+        // Lưu ghi chú vào database - FIXED: Truyền đúng cả title và content
         saveNote("Ghi chú", noteContent)
         console.log("💾 Đã lưu ghi chú:", noteContent)
 
@@ -257,41 +257,40 @@ const ChatScreen = () => {
   }
 
   const handleDeleteChatHistory = () => {
-  Alert.alert(
-    "Xác nhận xoá",
-    "Bạn có chắc chắn muốn xoá toàn bộ lịch sử trò chuyện không?",
-    [
-      { text: "Huỷ", style: "cancel" },
-      {
-        text: "Xoá",
-        style: "destructive",
-        onPress: () => {
-          deleteAllChatHistory(); // Gọi SQLite
-          setChatHistory([]);     // Reset UI
+    Alert.alert(
+      "Xác nhận xoá",
+      "Bạn có chắc chắn muốn xoá toàn bộ lịch sử trò chuyện không?",
+      [
+        { text: "Huỷ", style: "cancel" },
+        {
+          text: "Xoá",
+          style: "destructive",
+          onPress: () => {
+            deleteAllChatHistory(); // Gọi SQLite
+            setChatHistory([]);     // Reset UI
+          },
         },
-      },
-    ]
-  );
-};  
+      ]
+    );
+  };  
 
-const handleDeleteNotes = () => {
-  Alert.alert(
-    "Xác nhận xoá",
-    "Bạn có chắc chắn muốn xoá toàn bộ ghi chú không?",
-    [
-      { text: "Huỷ", style: "cancel" },
-      {
-        text: "Xoá",
-        style: "destructive",
-        onPress: () => {
-          deleteAllNotes(); // Gọi SQLite
-          setNotes([]);     // Reset UI
+  const handleDeleteNotes = () => {
+    Alert.alert(
+      "Xác nhận xoá",
+      "Bạn có chắc chắn muốn xoá toàn bộ ghi chú không?",
+      [
+        { text: "Huỷ", style: "cancel" },
+        {
+          text: "Xoá",
+          style: "destructive",
+          onPress: () => {
+            deleteAllNotes(); // Gọi SQLite
+            setNotes([]);     // Reset UI
+          },
         },
-      },
-    ]
-  );
-};
-
+      ]
+    );
+  };
 
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[styles.messageContainer, item.sender === "user" ? styles.userMessage : styles.botMessage]}>
@@ -395,7 +394,6 @@ const handleDeleteNotes = () => {
               <TouchableOpacity onPress={handleDeleteChatHistory} style={styles.deleteButton}>
                 <Ionicons name="trash-outline" size={22} color="#e74c3c" />
               </TouchableOpacity>
-
             </View>
             <ScrollView style={styles.modalContent}>
               {chatHistory.length > 0 ? (
@@ -419,7 +417,7 @@ const handleDeleteNotes = () => {
         </View>
       </Modal>
 
-      {/* Modal Ghi chú */}
+      {/* Modal Ghi chú - FIXED */}
       <Modal transparent visible={notesVisible} animationType="slide" onRequestClose={() => setNotesVisible(false)}>
         <View style={styles.overlay}>
           <View style={styles.modalContainer}>
@@ -436,9 +434,11 @@ const handleDeleteNotes = () => {
               {notes.length > 0 ? (
                 notes.map((note, index) => (
                   <View key={index} style={styles.noteItem}>
-                    <Text style={styles.noteTitle}>{note.title}</Text>
+                    <Text style={styles.noteTitle}>{note.title || "Ghi chú"}</Text>
                     <Text style={styles.noteContent}>{note.content}</Text>
-                    <Text style={styles.timestampText}>{new Date(note.timestamp).toLocaleString("vi-VN")}</Text>
+                    <Text style={styles.timestampText}>
+                      {new Date(note.created_at).toLocaleString("vi-VN")}
+                    </Text>
                   </View>
                 ))
               ) : (
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   deleteButton: {
-  marginLeft: 10,
-  padding: 4,
-},
+    marginLeft: 10,
+    padding: 4,
+  },
 })
