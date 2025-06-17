@@ -14,7 +14,7 @@ export const setupNotificationChannel = async () => {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
     });
-     console.log("✅ Notification channel created:",result);
+  
 };
 
 /**

@@ -10,13 +10,18 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from gtts import gTTS
 import threading
+import urllib.parse
 import time
 from handle_device_command import handle_device_command
+from city_utils import extract_city
+from time_utils import extract_forecast_date
+from city_utils import normalize_city_name
 
 
 # Load API key từ .env
 load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
+weather_api_key=os.getenv("OPENWEATHER_API_KEY")
 
 # Flask app
 app = Flask(__name__)
@@ -103,6 +108,49 @@ def parse_reminder(text):
 
     return None, None
 
+def get_weather(city):
+    encoded_city = urllib.parse.quote(city)
+    url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=vi&appid={weather_api_key}'
+    res = requests.get(url)
+    if res.status_code == 200:
+        data = res.json()
+        desc = data['weather'][0]['description']
+        temp = data['main']['temp']
+        return f"Thời tiết tại {city} hiện tại: {desc}, nhiệt độ {temp}°C"
+    else:
+        return "Không tìm thấy thông tin thời tiết cho địa điểm bạn yêu cầu."
+
+# Route chính
+@app.route('/weather', methods=['POST'])
+def weather():
+    data = request.json
+    message = data.get("message", "")
+    city_from_client = data.get("city", "").strip()
+
+    print(f"[DEBUG] Message nhận được: {message}")
+
+    forecast_date = extract_forecast_date(message)
+    print(f"[DEBUG] Ngày cần dự báo: {forecast_date}")
+
+    # 1. Trích xuất từ nội dung
+    city = extract_city(message)
+
+    # 2. Nếu không có thì lấy từ client
+    if not city and city_from_client:
+        city = city_from_client
+        print(f"[DEBUG] Dùng thành phố từ client gửi: {city}")
+
+    # 3. Nếu vẫn không có thì fallback
+    if not city:
+        city = "TP Hồ Chí Minh"
+        print(f"[DEBUG] Không tìm thấy thành phố, dùng mặc định: {city}")
+
+    # 4. Gọi hàm thời tiết
+    city = city.strip()
+    result = get_weather(city)
+
+    return jsonify({"reply": result})
+
 # Tự động xóa file âm thanh sau vài phút
 def auto_delete_file(path, delay_minutes=10):
     def delete():
@@ -120,10 +168,7 @@ def chat_endpoint():
     try:
         body = request.get_json()
         user_message = body.get("message", "").lower().strip()
-        print("User Message:", user_message)
-
         now = datetime.now()
-
         # 1. Kiểm tra lệnh điều khiển thiết bị
         device_response = handle_device_command(user_message)
         if device_response:
@@ -156,12 +201,6 @@ def chat_endpoint():
             reply = f"Bây giờ là {now.strftime('%H:%M:%S')}"
         elif "ngày mấy" in user_message or "hôm nay là ngày mấy" in user_message:
             reply = f"Hôm nay là ngày {now.strftime('%d/%m/%Y')}"
-        elif "mở youtube" in user_message:
-            return jsonify({"reply": "Đã mở YouTube giúp bạn.", "open_url": "https://www.youtube.com"})
-        elif "mở google" in user_message:
-            return jsonify({"reply": "Mở Google nè.", "open_url": "https://www.google.com"})
-        elif "mở facebook" in user_message:
-            return jsonify({"reply": "Đây là Facebook!", "open_url": "https://www.facebook.com"})
         else:
             # 4. Gửi đến OpenRouter (ChatGPT)
             headers = {
@@ -226,13 +265,25 @@ def get_notes():
 @app.route('/task', methods=['POST'])
 def create_task():
     data = request.json
+    print("📥 Dữ liệu nhận được từ frontend:", data)
+
+    task_text = data.get('task')
+    remind_time = data.get('remind_time')
+
+    if not task_text:
+        return jsonify({'error': 'Thiếu trường task'}), 400
+
     task = {
         'id': len(tasks) + 1,
-        'task': data['task'],
-        'remind_time': data['remind_time']
+        'task': task_text,
+        'remind_time': remind_time  # Có thể None nếu không gửi
     }
     tasks.append(task)
-    return jsonify(task), 201
+    reply_text = f"🛎️ Đã tạo nhắc việc: {task_text}"
+    if remind_time:
+        reply_text += f" lúc {remind_time}"
+    return jsonify({'reply': reply_text}), 201
+
 
 @app.route('/task', methods=['GET'])
 def get_tasks():
