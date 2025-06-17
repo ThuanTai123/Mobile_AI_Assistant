@@ -76,6 +76,7 @@ def parse_reminder(text):
             return None, None
 
         return remind_time, note
+    return None, None   
 
     # Dạng "tạo nhắc nhở vào lúc 10:40 ngày 6/6/2025"
     match = re.search(r'lúc (\d{1,2}[:h]\d{2}) ngày (\d{1,2})[/-](\d{1,2})[/-](\d{4})', text)
