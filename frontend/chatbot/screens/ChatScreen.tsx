@@ -15,6 +15,7 @@ import {
   StatusBar,
   Modal,
   ScrollView,
+  Alert,
 } from "react-native"
 import {
   setupNotificationChannel,
@@ -34,6 +35,7 @@ import SpeakingMicIcon from "./SpeakingMicIcon"
 import SQLite from "react-native-sqlite-storage"
 import { createChatTable, fetchChatHistory, saveMessage } from "./ChatService"
 import { createNoteTable, fetchNotes, saveNote } from "./NoteService"
+import { deleteAllChatHistory, deleteAllNotes } from "./database"
 
 interface Message {
   id: number
@@ -254,6 +256,34 @@ const ChatScreen = () => {
     }
   }
 
+  const handleDeleteChatHistory = () => {
+  Alert.alert("Xác nhận", "Bạn có chắc muốn xoá toàn bộ lịch sử?", [
+    { text: "Huỷ" },
+    {
+      text: "Xoá",
+      style: "destructive",
+      onPress: () => {
+        deleteAllChatHistory(); // Gọi tới database
+        setChatHistory([]);     // Cập nhật lại UI
+      },
+    },
+  ]);
+};
+
+const handleDeleteNotes = () => {
+  Alert.alert("Xác nhận", "Bạn có chắc muốn xoá toàn bộ ghi chú?", [
+    { text: "Huỷ" },
+    {
+      text: "Xoá",
+      style: "destructive",
+      onPress: () => {
+        deleteAllNotes();  // Gọi tới database
+        setNotes([]);      // Cập nhật lại UI
+      },
+    },
+  ]);
+};
+
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[styles.messageContainer, item.sender === "user" ? styles.userMessage : styles.botMessage]}>
       <View style={[styles.messageBubble, item.sender === "user" ? styles.userBubble : styles.botBubble]}>
@@ -353,6 +383,10 @@ const ChatScreen = () => {
               <TouchableOpacity onPress={() => setHistoryVisible(false)} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
+              <TouchableOpacity onPress={handleDeleteChatHistory} style={styles.deleteButton}>
+                <Ionicons name="trash-outline" size={22} color="#e74c3c" />
+              </TouchableOpacity>
+
             </View>
             <ScrollView style={styles.modalContent}>
               {chatHistory.length > 0 ? (
@@ -384,6 +418,9 @@ const ChatScreen = () => {
               <Text style={styles.modalTitle}>📝 Ghi chú của bạn</Text>
               <TouchableOpacity onPress={() => setNotesVisible(false)} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDeleteNotes} style={styles.deleteButton}>
+                <Ionicons name="trash-outline" size={22} color="#e74c3c" />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalContent}>
@@ -599,4 +636,8 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 8,
   },
+  deleteButton: {
+  marginLeft: 10,
+  padding: 4,
+},
 })
