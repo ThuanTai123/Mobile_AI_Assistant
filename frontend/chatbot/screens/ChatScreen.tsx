@@ -257,32 +257,41 @@ const ChatScreen = () => {
   }
 
   const handleDeleteChatHistory = () => {
-  Alert.alert("Xác nhận", "Bạn có chắc muốn xoá toàn bộ lịch sử?", [
-    { text: "Huỷ" },
-    {
-      text: "Xoá",
-      style: "destructive",
-      onPress: () => {
-        deleteAllChatHistory(); // Gọi tới database
-        setChatHistory([]);     // Cập nhật lại UI
+  Alert.alert(
+    "Xác nhận xoá",
+    "Bạn có chắc chắn muốn xoá toàn bộ lịch sử trò chuyện không?",
+    [
+      { text: "Huỷ", style: "cancel" },
+      {
+        text: "Xoá",
+        style: "destructive",
+        onPress: () => {
+          deleteAllChatHistory(); // Gọi SQLite
+          setChatHistory([]);     // Reset UI
+        },
       },
-    },
-  ]);
-};
+    ]
+  );
+};  
 
 const handleDeleteNotes = () => {
-  Alert.alert("Xác nhận", "Bạn có chắc muốn xoá toàn bộ ghi chú?", [
-    { text: "Huỷ" },
-    {
-      text: "Xoá",
-      style: "destructive",
-      onPress: () => {
-        deleteAllNotes();  // Gọi tới database
-        setNotes([]);      // Cập nhật lại UI
+  Alert.alert(
+    "Xác nhận xoá",
+    "Bạn có chắc chắn muốn xoá toàn bộ ghi chú không?",
+    [
+      { text: "Huỷ", style: "cancel" },
+      {
+        text: "Xoá",
+        style: "destructive",
+        onPress: () => {
+          deleteAllNotes(); // Gọi SQLite
+          setNotes([]);     // Reset UI
+        },
       },
-    },
-  ]);
+    ]
+  );
 };
+
 
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[styles.messageContainer, item.sender === "user" ? styles.userMessage : styles.botMessage]}>
