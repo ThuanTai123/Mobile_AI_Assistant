@@ -5,6 +5,7 @@ export const createNoteTable = () => {
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
         content TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );`
@@ -12,12 +13,12 @@ export const createNoteTable = () => {
   });
 };
 
-export const saveNote = (noteText: string) => {
+export const saveNote = (noteTitle: string, noteContent: string) => {
   db.transaction(tx => {
     tx.executeSql(
-      'INSERT INTO notes (content) VALUES (?);',
-      [noteText],
-      () => console.log('Note saved'),
+      'INSERT INTO notes (title, content) VALUES (?, ?);',
+      [noteTitle, noteContent],
+      () => console.log('Note saved successfully'),
       (tx, error) => console.error('Error saving note', error)
     );
   });
