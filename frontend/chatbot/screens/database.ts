@@ -10,3 +10,18 @@ const db = SQLite.openDatabase(
 );
 
 export default db;
+export const deleteAllChatHistory = () => {
+  db.transaction(tx => {
+    tx.executeSql("DELETE FROM chat_history", [], () => {
+      console.log("Đã xoá toàn bộ lịch sử trò chuyện");
+    });
+  });
+};
+
+export const deleteAllNotes = () => {
+  db.transaction(tx => {
+    tx.executeSql("DELETE FROM notes", [], () => {
+      console.log("Đã xoá toàn bộ ghi chú");
+    });
+  });
+};
