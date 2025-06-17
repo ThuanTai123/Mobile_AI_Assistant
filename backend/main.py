@@ -3,15 +3,15 @@ import re
 import sqlite3
 import uuid
 import requests
-from datetime import datetime, timedelta
+import threading
+import urllib.parse
+import time
+from datetime import datetime, timedelta, timezone
 from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 from gtts import gTTS
-import threading
-import urllib.parse
-import time
 from handle_device_command import handle_device_command
 from city_utils import extract_city
 from time_utils import extract_forecast_date
@@ -21,7 +21,7 @@ from city_utils import normalize_city_name
 # Load API key từ .env
 load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
-weather_api_key=os.getenv("OPENWEATHER_API_KEY")
+weather_api_key = os.getenv("OPENWEATHER_API_KEY")
 
 # Flask app
 app = Flask(__name__)
@@ -75,52 +75,54 @@ def parse_reminder(text):
         else:
             return None, None
 
-        return remind_time, note
+        return remind_time, note    
 
-    # Dạng "tạo nhắc nhở vào lúc 10:40 ngày 6/6/2025"
-    match = re.search(r'lúc (\d{1,2}[:h]\d{2}) ngày (\d{1,2})[/-](\d{1,2})[/-](\d{4})', text)
-    if match:
-        time_str = match.group(1).replace('h', ':')
-        day = int(match.group(2))
-        month = int(match.group(3))
-        year = int(match.group(4))
-        try:
-            dt = datetime.strptime(f"{day:02}/{month:02}/{year} {time_str}", "%d/%m/%Y %H:%M")
-            note = 'Nhắc nhở ' + text
-            return dt, note
-        except ValueError:
-            return None, None
+# Hàm lấy thời tiết kết hợp current và forecast
 
-    # Dạng "nhắc tôi <nội dung> vào HH:mm ngày dd/mm/yyyy"
-    match2 = re.search(
-        r'nhắc (?:tôi|nhở) (.+) vào (\d{1,2}:\d{2}) ?(?:ngày )?(\d{1,2})[/-](\d{1,2})[/-](\d{4})', text)
-    if match2:
-        note = 'Nhắc nhở ' + match2.group(1).strip()
-        time_str = match2.group(2)
-        day = int(match2.group(3))
-        month = int(match2.group(4))
-        year = int(match2.group(5))
-        try:
-            dt = datetime.strptime(f"{day:02}/{month:02}/{year} {time_str}", "%d/%m/%Y %H:%M")
-            return dt, note
-        except ValueError:
-            return None, None
-
-    return None, None
-
-def get_weather(city):
+def get_weather(city, date=None):
     encoded_city = urllib.parse.quote(city)
-    url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=vi&appid={weather_api_key}'
-    res = requests.get(url)
-    if res.status_code == 200:
-        data = res.json()
-        desc = data['weather'][0]['description']
-        temp = data['main']['temp']
-        return f"Thời tiết tại {city} hiện tại: {desc}, nhiệt độ {temp}°C"
-    else:
-        return "Không tìm thấy thông tin thời tiết cho địa điểm bạn yêu cầu."
+    today = datetime.now().date()
 
-# Route chính
+    # Current weather nếu date None hoặc hôm nay
+    if date is None or date == today.strftime("%Y-%m-%d"):
+        url = f'https://api.openweathermap.org/data/2.5/weather?q={encoded_city}&units=metric&lang=vi&appid={weather_api_key}'
+        res = requests.get(url)
+        if res.status_code == 200:
+            data = res.json()
+            desc = data['weather'][0]['description']
+            temp = data['main']['temp']
+            return f"🌤️ Thời tiết tại {city} hiện tại: {desc}, nhiệt độ {temp}°C"
+        else:
+            return "❌ Không tìm thấy thông tin thời tiết cho địa điểm bạn yêu cầu."
+
+    # Forecast 5 ngày/3 giờ
+    url = f'https://api.openweathermap.org/data/2.5/forecast?q={encoded_city}&units=metric&lang=vi&appid={weather_api_key}'
+    res = requests.get(url)
+    if res.status_code != 200:
+        return "❌ Không tìm thấy thông tin dự báo thời tiết cho địa điểm bạn yêu cầu."
+
+    data = res.json()
+    forecasts = data.get("list", [])
+    target_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    # Gom toàn bộ khung giờ trong ngày
+    lines = []
+    for item in forecasts:
+        # Parse thời gian UTC từ dt_txt, gán timezone UTC;
+        dt_utc = datetime.strptime(item['dt_txt'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        # Chuyển về múi giờ Việt Nam (UTC+7)
+        dt_local = dt_utc.astimezone(timezone(timedelta(hours=7)))
+        if dt_local.date() == target_date:
+            desc = item['weather'][0]['description']
+            temp = item['main']['temp']
+            lines.append(f"- {dt_local.strftime('%H:%M')}: {desc}, {temp}°C")
+
+    if lines:
+        return f"📅 Dự báo {city} ngày {target_date.strftime('%d/%m/%Y')}:\n" + "\n".join(lines)
+    else:
+        return f"❗ Không có dữ liệu dự báo thời tiết cho {city} vào ngày {date}."
+
+# Route thời tiết
 @app.route('/weather', methods=['POST'])
 def weather():
     data = request.json
@@ -129,28 +131,23 @@ def weather():
 
     print(f"[DEBUG] Message nhận được: {message}")
 
-    forecast_date = extract_forecast_date(message)
-    print(f"[DEBUG] Ngày cần dự báo: {forecast_date}")
-
-    # 1. Trích xuất từ nội dung
+    # 1. Trích xuất thành phố
     city = extract_city(message)
-
-    # 2. Nếu không có thì lấy từ client
     if not city and city_from_client:
         city = city_from_client
         print(f"[DEBUG] Dùng thành phố từ client gửi: {city}")
-
-    # 3. Nếu vẫn không có thì fallback
     if not city:
         city = "TP Hồ Chí Minh"
         print(f"[DEBUG] Không tìm thấy thành phố, dùng mặc định: {city}")
+    city = normalize_city_name(city)
 
-    # 4. Gọi hàm thời tiết
-    city = city.strip()
-    result = get_weather(city)
+    # 2. Trích xuất ngày dự báo
+    forecast_date = extract_forecast_date(message)
+    print(f"[DEBUG] Ngày cần dự báo: {forecast_date}")
 
+    # 3. Gọi hàm thời tiết
+    result = get_weather(city, forecast_date)
     return jsonify({"reply": result})
-
 # Tự động xóa file âm thanh sau vài phút
 def auto_delete_file(path, delay_minutes=10):
     def delete():
