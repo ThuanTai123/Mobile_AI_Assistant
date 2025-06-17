@@ -76,6 +76,7 @@ def parse_reminder(text):
             return None, None
 
         return remind_time, note    
+    return None,None
 
 # Hàm lấy thời tiết kết hợp current và forecast
 
