@@ -3,18 +3,24 @@ import re
 import sqlite3
 import uuid
 import requests
-from datetime import datetime, timedelta
+import threading
+import urllib.parse
+import time
+from datetime import datetime, timedelta, timezone
 from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 from gtts import gTTS
-import threading
-import time
+from handle_device_command import handle_device_command
+from city_utils import CITY_MAP, extract_city
+from time_utils import extract_forecast_date
+
 
 # Load API key từ .env
 load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
+weather_api_key = os.getenv("OPENWEATHER_API_KEY")
 
 # Flask app
 app = Flask(__name__)
@@ -68,38 +74,89 @@ def parse_reminder(text):
         else:
             return None, None
 
-        return remind_time, note
+        return remind_time, note    
+    return None,None
 
-    # Dạng "tạo nhắc nhở vào lúc 10:40 ngày 6/6/2025"
-    match = re.search(r'lúc (\d{1,2}[:h]\d{2}) ngày (\d{1,2})[/-](\d{1,2})[/-](\d{4})', text)
-    if match:
-        time_str = match.group(1).replace('h', ':')
-        day = int(match.group(2))
-        month = int(match.group(3))
-        year = int(match.group(4))
-        try:
-            dt = datetime.strptime(f"{day:02}/{month:02}/{year} {time_str}", "%d/%m/%Y %H:%M")
-            note = 'Nhắc nhở ' + text
-            return dt, note
-        except ValueError:
-            return None, None
+# Hàm lấy thời tiết kết hợp current và forecast
 
-    # Dạng "nhắc tôi <nội dung> vào HH:mm ngày dd/mm/yyyy"
-    match2 = re.search(
-        r'nhắc (?:tôi|nhở) (.+) vào (\d{1,2}:\d{2}) ?(?:ngày )?(\d{1,2})[/-](\d{1,2})[/-](\d{4})', text)
-    if match2:
-        note = 'Nhắc nhở ' + match2.group(1).strip()
-        time_str = match2.group(2)
-        day = int(match2.group(3))
-        month = int(match2.group(4))
-        year = int(match2.group(5))
-        try:
-            dt = datetime.strptime(f"{day:02}/{month:02}/{year} {time_str}", "%d/%m/%Y %H:%M")
-            return dt, note
-        except ValueError:
-            return None, None
+def get_weather(city, date=None):
+    encoded_city = urllib.parse.quote(city)
+    today = datetime.now().date()
 
-    return None, None
+    # Current weather nếu date None hoặc hôm nay
+    if date is None or date == today.strftime("%Y-%m-%d"):
+        url = f'https://api.openweathermap.org/data/2.5/weather?q={encoded_city}&units=metric&lang=vi&appid={weather_api_key}'
+        res = requests.get(url)
+        if res.status_code == 200:
+            data = res.json()
+            desc = data['weather'][0]['description']
+            temp = data['main']['temp']
+            return f"🌤️ Thời tiết tại {city} hiện tại: {desc}, nhiệt độ {temp}°C"
+        else:
+            return "❌ Không tìm thấy thông tin thời tiết cho địa điểm bạn yêu cầu."
+
+    # Forecast 5 ngày/3 giờ
+    url = f'https://api.openweathermap.org/data/2.5/forecast?q={encoded_city}&units=metric&lang=vi&appid={weather_api_key}'
+    res = requests.get(url)
+    if res.status_code != 200:
+        return "❌ Không tìm thấy thông tin dự báo thời tiết cho địa điểm bạn yêu cầu."
+
+    data = res.json()
+    forecasts = data.get("list", [])
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        if (target_date - today).days > 5:
+            return "📅 Dự báo thời tiết chỉ hỗ trợ trong 5 ngày tới. Bạn vui lòng hỏi ngày gần hơn."
+    except:
+        return "❌ Không xác định được ngày bạn yêu cầu."
+
+
+    # Gom toàn bộ khung giờ trong ngày
+    lines = []
+    for item in forecasts:
+        # Parse thời gian UTC từ dt_txt, gán timezone UTC;
+        dt_utc = datetime.strptime(item['dt_txt'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        # Chuyển về múi giờ Việt Nam (UTC+7)
+        dt_local = dt_utc.astimezone(timezone(timedelta(hours=7)))
+        if dt_local.date() == target_date:
+            desc = item['weather'][0]['description']
+            temp = item['main']['temp']
+            lines.append(f"- {dt_local.strftime('%H:%M')}: {desc}, {temp}°C")
+
+    if lines:
+        return f"📅 Dự báo {city} ngày {target_date.strftime('%d/%m/%Y')}:\n" + "\n".join(lines)
+    else:
+        return f"❗ Không có dữ liệu dự báo thời tiết cho {city} vào ngày {date}."
+
+# Route thời tiết
+@app.route('/weather', methods=['POST'])
+def weather():
+    data = request.json
+    message = data.get("message", "")
+    city_from_client = data.get("city", "").strip()
+    print(f"[DEBUG] Message nhận được: {message}")
+
+    # 1. Trích xuất thành phố
+    city_vi = extract_city(message)
+    if not city_vi and city_from_client:
+        city_vi = city_from_client
+        print(f"[DEBUG] Dùng thành phố từ client gửi: {city_vi}")
+    if not city_vi:
+        city_vi = "TP Hồ Chí Minh"
+        print(f"[DEBUG] Không tìm thấy thành phố, dùng mặc định: {city_vi}")
+
+    # 2. Chuẩn hóa tên thành phố để gọi API (tiếng Anh)
+    city_en = CITY_MAP.get(city_vi, city_vi)
+    print(f"[DEBUG] Thành phố trích xuất (VI): {city_vi}")
+    print(f"[DEBUG] Thành phố chuẩn để gọi API: {city_en}")
+
+    # 2. Trích xuất ngày dự báo
+    forecast_date = extract_forecast_date(message)
+    print(f"[DEBUG] Ngày cần dự báo: {forecast_date}")
+
+    # 3. Gọi hàm thời tiết
+    result = get_weather(city_en, forecast_date)
+    return jsonify({"reply": result})
 
 # Tự động xóa file âm thanh sau vài phút
 def auto_delete_file(path, delay_minutes=10):
@@ -118,11 +175,15 @@ def chat_endpoint():
     try:
         body = request.get_json()
         user_message = body.get("message", "").lower().strip()
-        print("User Message:", user_message)
-
         now = datetime.now()
+        # 1. Kiểm tra lệnh điều khiển thiết bị
+        device_response = handle_device_command(user_message)
+        if device_response:
+            return jsonify({
+                "reply": device_response
+            })
 
-        # Tạo nhắc nhở từ văn bản
+        # 2. Tạo nhắc nhở từ văn bản
         dt, content = parse_reminder(user_message)
         if dt:
             new_appt = Appointment(datetime=dt, description=content)
@@ -142,19 +203,13 @@ def chat_endpoint():
                 "datetime": dt.isoformat()
             })
 
-        # Một số câu hỏi thường gặp
+        # 3. Câu hỏi thường gặp
         if "mấy giờ" in user_message or "bây giờ là mấy giờ" in user_message:
             reply = f"Bây giờ là {now.strftime('%H:%M:%S')}"
         elif "ngày mấy" in user_message or "hôm nay là ngày mấy" in user_message:
             reply = f"Hôm nay là ngày {now.strftime('%d/%m/%Y')}"
-        elif "mở youtube" in user_message:
-            return jsonify({"reply": "Đã mở YouTube giúp bạn.", "open_url": "https://www.youtube.com"})
-        elif "mở google" in user_message:
-            return jsonify({"reply": "Mở Google nè.", "open_url": "https://www.google.com"})
-        elif "mở facebook" in user_message:
-            return jsonify({"reply": "Đây là Facebook!", "open_url": "https://www.facebook.com"})
         else:
-            # Gửi đến OpenRouter (ChatGPT)
+            # 4. Gửi đến OpenRouter (ChatGPT)
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
@@ -178,6 +233,7 @@ def chat_endpoint():
             data = response.json()
             reply = data["choices"][0]["message"]["content"]
 
+        # Chuyển văn bản thành giọng nói
         tts = gTTS(text=reply, lang="vi", tld="com.vn")
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join(AUDIO_FOLDER, filename)
@@ -192,6 +248,7 @@ def chat_endpoint():
     except Exception as e:
         print("Lỗi:", str(e))
         return jsonify({"reply": "Xin lỗi, có lỗi xảy ra", "error": str(e)}), 500
+
 
 @app.route("/static/audio/<filename>")
 def serve_audio(filename):
@@ -215,13 +272,25 @@ def get_notes():
 @app.route('/task', methods=['POST'])
 def create_task():
     data = request.json
+    print("📥 Dữ liệu nhận được từ frontend:", data)
+
+    task_text = data.get('task')
+    remind_time = data.get('remind_time')
+
+    if not task_text:
+        return jsonify({'error': 'Thiếu trường task'}), 400
+
     task = {
         'id': len(tasks) + 1,
-        'task': data['task'],
-        'remind_time': data['remind_time']
+        'task': task_text,
+        'remind_time': remind_time  # Có thể None nếu không gửi
     }
     tasks.append(task)
-    return jsonify(task), 201
+    reply_text = f"🛎️ Đã tạo nhắc việc: {task_text}"
+    if remind_time:
+        reply_text += f" lúc {remind_time}"
+    return jsonify({'reply': reply_text}), 201
+
 
 @app.route('/task', methods=['GET'])
 def get_tasks():

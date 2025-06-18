@@ -16,18 +16,20 @@ import {
   setupNotificationChannel,
   requestNotificationPermission,
   setupNotificationHandler,
-  scheduleReminderNotification
+  scheduleReminderNotification,
 } from './Notifications'; 
 import { handleDeviceCommand } from './DeviceCommandHandler';
 import { Ionicons } from '@expo/vector-icons';
 import { checkAndOpenApp } from './AppLauncher';
 import * as Speech from 'expo-speech';
-import { sendMessageToBot } from '../api/chat';
+// import { sendMessageToBot } from '../api/chat';
 import * as Notifications from 'expo-notifications';
 import { PermissionsAndroid, Alert } from 'react-native';
 import useVoice from './useVoice';
 import SpeakingMicIcon from './SpeakingMicIcon';
-
+// import { getWeather } from '../api/weather'; 
+import { getCurrentCity } from './location';
+import { processMessage } from '../api/chat';
 
 
 const requestMicrophonePermission = async () => {
@@ -64,7 +66,9 @@ const ChatScreen = () => {
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const [currentCity, setCurrentCity] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const hasSpokenRef = useRef(false);
   const { isListening, results,partialTranscript, startListening, stopListening } = useVoice();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -72,23 +76,32 @@ const ChatScreen = () => {
   console.log('📤 Gửi voice:', text);
   setInputText(text);    // Hiển thị vào input (nếu cần)
 };
-
-
-  useEffect(() => {
+  useEffect(() => {  
+    const init = async () => {
+    await setupNotificationHandler();
+    await requestNotificationPermission();  
+    await setupNotificationChannel(); 
+    };
     requestPermissions();
     requestMicrophonePermission();
-    setupNotificationHandler();
-    setupNotificationChannel();
-    requestNotificationPermission();
+    init();
   }, []);
   useEffect(() => {
-  if (results.length > 0) {
-    const latestText = results[0];
-    handleVoiceResult(latestText);
-  }
-}, [results]);
-
-
+    if (results.length > 0) {
+      const latestText = results[0];
+      handleVoiceResult(latestText);
+    }
+  }, [results]);
+  useEffect(() => {
+      const fetchCity = async () => {
+        const city = await getCurrentCity();
+        if (city) {
+          setCurrentCity(city);
+        }
+      };
+      fetchCity(); // gọi ngay khi màn hình load
+    }, 
+  []);
   const requestPermissions = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
     if (status !== 'granted') {
@@ -128,70 +141,92 @@ const ChatScreen = () => {
       ]);
       return;
     }
-    const deviceResponse = await handleDeviceCommand(textToSend);
-    if (deviceResponse) {
-      const botMessage: Message = {
-        id: generateId(),
-        text: deviceResponse,
-        sender: 'bot',
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    }
-    const botResponse = await sendMessageToBot(textToSend);
-    const scheduleReminderNotification = async (delaySeconds: number, message: string) => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '📌 Nhắc nhở',
-        body: message,
-        sound: 'default',
-      },
-      trigger: {
-        seconds: delaySeconds,  // ✅ Đảm bảo delay đúng số giây
-        channelId: 'reminder',  // ✅ Quan trọng cho Android 13+
-      },// as Notifications.TimeIntervalTriggerInput
-    });
-  };//Tạo thông báo
+ // Thử xử lý lệnh thiết bị trước
+  // const deviceResponse = await handleDeviceCommand(textToSend);
+  // if (deviceResponse) {
+  //   setMessages((prev) => [
+  //     ...prev,
+  //     { id: generateId(), text: deviceResponse, sender: 'bot' },
+  //   ]);
+  //   // ✅ Không gọi bot nữa nếu đã xử lý
+  //   setIsSpeaking(true);
+  //   Speech.speak(deviceResponse, {
+  //     language: 'vi-VN',
+  //     pitch: 1,
+  //     rate: 1,
+  //     onDone: () => setIsSpeaking(false),
+  //     onStopped: () => setIsSpeaking(false),
+  //     onError: () => setIsSpeaking(false),
+  //   });
+  //   return;
+  // }
+  let city: string | null = null;
+  const text = userMessage.text.toLowerCase();
+  if (text.includes('thời tiết') || text.includes('trời')) {
+    city = currentCity;
+  }
 
-    // Kiểm tra nếu là lệnh nhắc, thì trích số giây và lên lịch
-    const isReminder = /đã tạo nhắc/i.test(botResponse.reply);
-    if (isReminder) {
-      const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i);
-      if (match) {
-        const delaySeconds = parseInt(match[1]);
-        if (!isNaN(delaySeconds)) {
-          await scheduleReminderNotification(
-            delaySeconds, 
-            '⏰ Nhắc nhở ' + textToSend
-          );
-        }
+
+  // const weatherResponse = await getWeather(textToSend);
+  //   if (weatherResponse) {
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       { id: generateId(), text: weatherResponse, sender: 'bot' }
+  //     ]);
+  //     setIsSpeaking(true);
+  //     Speech.speak(weatherResponse, {
+  //       language: 'vi-VN',
+  //       pitch: 1,
+  //       rate: 1,
+  //       onDone: () => setIsSpeaking(false),
+  //       onStopped: () => setIsSpeaking(false),
+  //       onError: () => setIsSpeaking(false),
+  //     });
+  //     return;
+  //   }
+  // Nếu không xử lý thiết bị, mới gọi bot
+  const botResponse = await processMessage(textToSend);
+  const isReminder = /đã tạo nhắc/i.test(botResponse.reply);
+  if (isReminder) {
+    const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i);
+    if (match) {
+      const delaySeconds = parseInt(match[1]);
+      if (!isNaN(delaySeconds)) {
+        await scheduleReminderNotification(
+          delaySeconds,  textToSend
+        );
       }
     }
-    
-    const botMessage: Message = {
-      id: generateId(),
-      text: botResponse.reply,
-      sender: 'bot',
-    };
-    
-    setMessages((prev) => [...prev, botMessage]);
-    scrollToBottom();
-    if (!isReminder) {
-      setIsSpeaking(true);
-      Speech.speak(botResponse.reply, {
+  }
+
+  if (botResponse) {
+    setMessages((prev) => [
+      ...prev,
+      { id: generateId(), text: botResponse.reply, sender: 'bot' }
+    ]);
+    if (hasSpokenRef.current) return;
+    hasSpokenRef.current = true;
+    setIsSpeaking(true);
+    Speech.speak(botResponse.reply, {
       language: 'vi-VN',
       pitch: 1,
       rate: 1,
-      onDone: () => {
+      onDone: () =>{
+          hasSpokenRef.current = false;
+          setIsSpeaking(false);
+      } ,
+       onStopped: () => {
+        hasSpokenRef.current = false;
         setIsSpeaking(false);
-        setIsRecording(false);
       },
-      onStopped: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
-      });
-      return;
-    }
-   
-  };
+       onError: () => {
+        hasSpokenRef.current = false;
+        setIsSpeaking(false);
+      }
+  });
+}
+  scrollToBottom();
+};
 
 
   const renderMessage = ({ item }: { item: Message }) => (

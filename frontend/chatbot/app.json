@@ -32,6 +32,7 @@
     },
     "android": {
       "permissions": [
+        "ACCESS_FINE_LOCATION",
         "CAMERA",
         "FLASHLIGHT",
         "RECEIVE_BOOT_COMPLETED"
