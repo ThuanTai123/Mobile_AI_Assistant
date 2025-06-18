@@ -10,6 +10,7 @@ const db = SQLite.openDatabase(
 );
 
 export default db;
+
 export const deleteAllChatHistory = () => {
   db.transaction(tx => {
     tx.executeSql("DELETE FROM chat_history", [], () => {
@@ -23,5 +24,15 @@ export const deleteAllNotes = () => {
     tx.executeSql("DELETE FROM notes", [], () => {
       console.log("Đã xoá toàn bộ ghi chú");
     });
+  });
+};
+
+// ✅ THÊM: Function để reset toàn bộ database
+export const resetDatabase = () => {
+  db.transaction(tx => {
+    // Drop tất cả bảng
+    tx.executeSql("DROP TABLE IF EXISTS notes", []);
+    tx.executeSql("DROP TABLE IF EXISTS chat_history", []);
+    console.log("🔄 Database reset completed");
   });
 };
