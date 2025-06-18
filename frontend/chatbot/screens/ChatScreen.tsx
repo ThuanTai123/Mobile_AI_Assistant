@@ -32,7 +32,6 @@ import * as Notifications from 'expo-notifications';
 import { PermissionsAndroid } from 'react-native';
 import useVoice from './useVoice';
 import SpeakingMicIcon from './SpeakingMicIcon';
-// import { getWeather } from '../api/weather'; 
 import { getCurrentCity } from './location';
 import { processMessage } from '../api/chat';
 import SQLite from "react-native-sqlite-storage"
