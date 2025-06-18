@@ -34,7 +34,7 @@ import useVoice from "./useVoice"
 import SpeakingMicIcon from "./SpeakingMicIcon"
 import SQLite from "react-native-sqlite-storage"
 import { createChatTable, fetchChatHistory, saveMessage } from "./ChatService"
-import { createNoteTable, fetchNotes, saveNote } from "./NoteService"
+import { createNoteTable, fetchNotes, saveNote, deleteNoteById, testDatabase } from "./NoteService"
 import { deleteAllChatHistory, deleteAllNotes } from "./database"
 
 interface Message {
@@ -67,7 +67,7 @@ const ChatScreen = () => {
   )
   const handleVoiceResult = (text: string) => {
     console.log("📤 Gửi voice:", text)
-    setInputText(text) // Hiển thị vào input (nếu cần)
+    setInputText(text)
   }
 
   // Hàm load lại dữ liệu từ database
@@ -82,19 +82,59 @@ const ChatScreen = () => {
     fetchNotes((notesList: any[]) => {
       setNotes(notesList)
       console.log("📝 Loaded notes:", notesList.length, "notes")
+      // ✅ THÊM: Debug chi tiết từng ghi chú
+      notesList.forEach((note, index) => {
+        console.log(`📋 Note ${index + 1}:`, {
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          created_at: note.created_at
+        });
+      });
     })
   }
 
+  // Hàm xóa ghi chú theo ID
+  const handleDeleteNote = (noteId: number, noteTitle: string) => {
+    Alert.alert(
+      "Xác nhận xoá",
+      `Bạn có chắc chắn muốn xoá ghi chú "${noteTitle}" không?`,
+      [
+        { text: "Huỷ", style: "cancel" },
+        {
+          text: "Xoá",
+          style: "destructive",
+          onPress: () => {
+            deleteNoteById(noteId, () => {
+              loadNotes();
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  // ✅ FIXED: useEffect với database testing
   useEffect(() => {
     const init = async () => {
       await setupNotificationHandler()
       await requestNotificationPermission()
       await setupNotificationChannel()
-      //Khởi tạo bảng chat & note
-      createChatTable()
-      createNoteTable()
+      
+      // Tạo bảng và test database
+      try {
+        await createChatTable()
+        await createNoteTable()
+        console.log("✅ Tables created successfully");
+        
+        // Test database
+        testDatabase();
+        
+      } catch (error) {
+        console.error("❌ Database initialization failed:", error);
+      }
 
-      // Load dữ liệu lịch sử
+      // Load dữ liệu
       loadChatHistory()
       loadNotes()
     }
@@ -120,6 +160,7 @@ const ChatScreen = () => {
     requestMicrophonePermission()
     init()
   }, [])
+
   useEffect(() => {
     if (results.length > 0) {
       const latestText = results[0]
@@ -138,49 +179,111 @@ const ChatScreen = () => {
     flatListRef.current?.scrollToEnd({ animated: true })
   }
 
-  const handleSend = async (overrideText?: string) => {
-    Vibration.vibrate(50)
-    const textToSend = overrideText || inputText.trim()
-    if (!textToSend) return
+  // ✅ FIXED: handleSend với async/await cho note creation
+  // ✅ FIXED: Sửa lỗi TypeScript cho error handling
+const handleSend = async (overrideText?: string) => {
+  Vibration.vibrate(50)
+  const textToSend = overrideText || inputText.trim()
+  if (!textToSend) return
 
-    const userMessage: Message = {
+  console.log("🔍 Processing message:", textToSend);
+
+  const userMessage: Message = {
+    id: generateId(),
+    text: textToSend,
+    sender: "user",
+  }
+
+  saveMessage("user", textToSend)
+  setMessages((prev) => [...prev, userMessage])
+  setInputText("")
+  scrollToBottom()
+
+  const { opened, appName } = await checkAndOpenApp(textToSend)
+  if (opened) {
+    const appResponse = `Đã mở ứng dụng ${appName} cho bạn.`
+    const botMessage: Message = {
       id: generateId(),
-      text: textToSend,
-      sender: "user",
+      text: appResponse,
+      sender: "bot",
     }
+    setMessages((prev) => [...prev, botMessage])
+    saveMessage("bot", appResponse)
+    return
+  }
 
-    // ✅ Lưu tin nhắn user vào database
-    saveMessage("user", textToSend)
-
-    setMessages((prev) => [...prev, userMessage])
-    setInputText("")
-    scrollToBottom()
-
-    const { opened, appName } = await checkAndOpenApp(textToSend)
-    if (opened) {
-      const appResponse = `Đã mở ứng dụng ${appName} cho bạn.`
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          text: appResponse,
-          sender: "bot",
-        },
-      ])
-      // ✅ Lưu phản hồi bot vào database
-      saveMessage("bot", appResponse)
-      return
+  const deviceResponse = await handleDeviceCommand(textToSend)
+  if (deviceResponse) {
+    const botMessage: Message = {
+      id: generateId(),
+      text: deviceResponse,
+      sender: "bot",
     }
+    setMessages((prev) => [...prev, botMessage])
+    saveMessage("bot", deviceResponse)
 
-    // Thử xử lý lệnh thiết bị trước
-    const deviceResponse = await handleDeviceCommand(textToSend)
-    if (deviceResponse) {
-      setMessages((prev) => [...prev, { id: generateId(), text: deviceResponse, sender: "bot" }])
-      // ✅ Lưu phản hồi thiết bị vào database
-      saveMessage("bot", deviceResponse)
+    setIsSpeaking(true)
+    Speech.speak(deviceResponse, {
+      language: "vi-VN",
+      pitch: 1,
+      rate: 1,
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    })
+    return
+  }
 
+  // ✅ FIXED: Sử dụng async/await cho note creation
+  console.log("🔍 Checking if message is note creation...");
+
+  const notePatterns = [
+    /^tạo ghi chú\s+(.+)$/i,
+    /^ghi chú\s+(.+)$/i,
+  ];
+
+  let noteContent = null;
+
+  for (const pattern of notePatterns) {
+    const match = textToSend.match(pattern);
+    if (match && match[1] && match[1].trim()) {
+      noteContent = match[1].trim();
+      break;
+    }
+  }
+
+  if (noteContent) {
+    console.log("✅ Creating note with content:", noteContent);
+    
+    const noteTitle = noteContent.length > 25 
+      ? noteContent.substring(0, 25) + "..." 
+      : noteContent;
+    
+    try {
+      // Sử dụng async/await
+      console.log("💾 Calling saveNote...");
+      await saveNote(noteTitle, noteContent);
+      console.log("✅ Note saved successfully!");
+      
+      // Tạo phản hồi bot
+      const noteResponse = `✅ Đã tạo ghi chú: "${noteContent}"`;
+      const botMessage: Message = {
+        id: generateId(),
+        text: noteResponse,
+        sender: "bot",
+      }
+      setMessages((prev) => [...prev, botMessage])
+      saveMessage("bot", noteResponse)
+
+      // Load lại notes
+      setTimeout(() => {
+        console.log("🔄 Reloading notes...");
+        loadNotes()
+      }, 1000)
+
+      // Đọc phản hồi
       setIsSpeaking(true)
-      Speech.speak(deviceResponse, {
+      Speech.speak(noteResponse, {
         language: "vi-VN",
         pitch: 1,
         rate: 1,
@@ -188,73 +291,80 @@ const ChatScreen = () => {
         onStopped: () => setIsSpeaking(false),
         onError: () => setIsSpeaking(false),
       })
-      return
-    }
-
-    // Nếu không xử lý thiết bị, mới gọi bot
-    const botResponse = await sendMessageToBot(textToSend)
-    const isReminder = /đã tạo nhắc/i.test(botResponse.reply)
-
-    // ✅ Kiểm tra nếu là lệnh tạo ghi chú - FIXED
-    const isCreateNote = /tạo ghi chú/i.test(textToSend)
-    if (isCreateNote) {
-      // Trích xuất nội dung ghi chú từ tin nhắn
-      const noteContent = textToSend.replace(/tạo ghi chú/i, "").trim()
-      if (noteContent) {
-        // Lưu ghi chú vào database - FIXED: Truyền đúng cả title và content
-        saveNote("Ghi chú", noteContent)
-        console.log("💾 Đã lưu ghi chú:", noteContent)
-
-        // Load lại danh sách ghi chú
-        setTimeout(() => {
-          loadNotes()
-        }, 500)
+      
+    } catch (error: unknown) {
+      // ✅ FIXED: Type assertion cho error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("❌ Failed to save note:", error);
+      
+      // Hiển thị lỗi cho user
+      const userErrorMessage = `❌ Không thể lưu ghi chú: ${errorMessage}`;
+      const botMessage: Message = {
+        id: generateId(),
+        text: userErrorMessage,
+        sender: "bot",
       }
-    }
-
-    if (isReminder) {
-      const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i)
-      if (match) {
-        const delaySeconds = Number.parseInt(match[1])
-        if (!isNaN(delaySeconds)) {
-          await scheduleReminderNotification(delaySeconds, textToSend)
-        }
-      }
-    }
-
-    const botMessage: Message = {
-      id: generateId(),
-      text: botResponse.reply,
-      sender: "bot",
-    }
-
-    // ✅ Lưu phản hồi bot vào database
-    saveMessage("bot", botResponse.reply)
-
-    setMessages((prev) => [...prev, botMessage])
-    scrollToBottom()
-
-    // ✅ Load lại lịch sử chat sau khi lưu
-    setTimeout(() => {
-      loadChatHistory()
-    }, 500)
-
-    if (!isReminder) {
+      setMessages((prev) => [...prev, botMessage])
+      
+      // Đọc lỗi
       setIsSpeaking(true)
-      Speech.speak(botResponse.reply, {
+      Speech.speak("Không thể lưu ghi chú. Vui lòng thử lại.", {
         language: "vi-VN",
         pitch: 1,
         rate: 1,
-        onDone: () => {
-          setIsSpeaking(false)
-          setIsRecording(false)
-        },
+        onDone: () => setIsSpeaking(false),
         onStopped: () => setIsSpeaking(false),
         onError: () => setIsSpeaking(false),
       })
-      return
+    }
+    
+    return
+  }
+
+  // ... rest of the function remains the same
+  const botResponse = await sendMessageToBot(textToSend)
+  const isReminder = /đã tạo nhắc/i.test(botResponse.reply)
+
+  if (isReminder) {
+    const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i)
+    if (match) {
+      const delaySeconds = Number.parseInt(match[1])
+      if (!isNaN(delaySeconds)) {
+        await scheduleReminderNotification(delaySeconds, textToSend)
+      }
     }
   }
+
+  const botMessage: Message = {
+    id: generateId(),
+    text: botResponse.reply,
+    sender: "bot",
+  }
+
+  saveMessage("bot", botResponse.reply)
+  setMessages((prev) => [...prev, botMessage])
+  scrollToBottom()
+
+  setTimeout(() => {
+    loadChatHistory()
+  }, 500)
+
+  if (!isReminder) {
+    setIsSpeaking(true)
+    Speech.speak(botResponse.reply, {
+      language: "vi-VN",
+      pitch: 1,
+      rate: 1,
+      onDone: () => {
+        setIsSpeaking(false)
+        setIsRecording(false)
+      },
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    })
+    return
+  }
+}
 
   const handleDeleteChatHistory = () => {
     Alert.alert(
@@ -266,8 +376,8 @@ const ChatScreen = () => {
           text: "Xoá",
           style: "destructive",
           onPress: () => {
-            deleteAllChatHistory(); // Gọi SQLite
-            setChatHistory([]);     // Reset UI
+            deleteAllChatHistory();
+            setChatHistory([]);
           },
         },
       ]
@@ -284,8 +394,8 @@ const ChatScreen = () => {
           text: "Xoá",
           style: "destructive",
           onPress: () => {
-            deleteAllNotes(); // Gọi SQLite
-            setNotes([]);     // Reset UI
+            deleteAllNotes();
+            setNotes([]);
           },
         },
       ]
@@ -309,12 +419,10 @@ const ChatScreen = () => {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerText}>RUBY ASSISTANT</Text>
         </View>
 
-        {/* Messages */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -327,7 +435,6 @@ const ChatScreen = () => {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Input Area */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <TextInput
@@ -351,12 +458,11 @@ const ChatScreen = () => {
               </Text>
             </View>
           )}
-          {/* Bottom Icons */}
           <View style={styles.bottomIcons}>
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => {
-                loadChatHistory() // Load lại dữ liệu trước khi hiển thị
+                loadChatHistory()
                 setHistoryVisible(true)
               }}
             >
@@ -372,7 +478,7 @@ const ChatScreen = () => {
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => {
-                loadNotes() // Load lại dữ liệu trước khi hiển thị
+                loadNotes()
                 setNotesVisible(true)
               }}
             >
@@ -382,7 +488,6 @@ const ChatScreen = () => {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Modal Lịch sử trò chuyện */}
       <Modal transparent visible={historyVisible} animationType="slide" onRequestClose={() => setHistoryVisible(false)}>
         <View style={styles.overlay}>
           <View style={styles.modalContainer}>
@@ -417,7 +522,7 @@ const ChatScreen = () => {
         </View>
       </Modal>
 
-      {/* Modal Ghi chú - FIXED */}
+      {/* ✅ FIXED: Modal Ghi chú với debug chi tiết */}
       <Modal transparent visible={notesVisible} animationType="slide" onRequestClose={() => setNotesVisible(false)}>
         <View style={styles.overlay}>
           <View style={styles.modalContainer}>
@@ -432,15 +537,34 @@ const ChatScreen = () => {
             </View>
             <ScrollView style={styles.modalContent}>
               {notes.length > 0 ? (
-                notes.map((note, index) => (
-                  <View key={index} style={styles.noteItem}>
-                    <Text style={styles.noteTitle}>{note.title || "Ghi chú"}</Text>
-                    <Text style={styles.noteContent}>{note.content}</Text>
-                    <Text style={styles.timestampText}>
-                      {new Date(note.created_at).toLocaleString("vi-VN")}
-                    </Text>
-                  </View>
-                ))
+                notes.map((note, index) => {
+                  console.log(`🎨 Rendering note ${index + 1}:`, note);
+                  
+                  return (
+                    <View key={note.id || index} style={styles.noteItem}>
+                      <View style={styles.noteHeader}>
+                        <Text style={styles.noteTitle}>
+                          {note.title || note.content || "Không có tiêu đề"}
+                        </Text>
+                        <TouchableOpacity 
+                          onPress={() => handleDeleteNote(note.id, note.title || note.content || "Ghi chú")}
+                          style={styles.individualDeleteButton}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#e74c3c" />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.noteContent}>
+                        {note.content || note.title || "Không có nội dung"}
+                      </Text>
+                      <Text style={styles.timestampText}>
+                        {note.created_at ? new Date(note.created_at).toLocaleString("vi-VN") : "Không có thời gian"}
+                      </Text>
+                      <Text style={styles.debugText}>
+                        DEBUG: ID={note.id}, Title="{note.title}", Content="{note.content}"
+                      </Text>
+                    </View>
+                  )
+                })
               ) : (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="document-text-outline" size={48} color="#ccc" />
@@ -522,21 +646,37 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: "#ffc107",
   },
+  noteHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 4,
+  },
   noteTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
   },
   noteContent: {
     fontSize: 14,
     color: "#666",
     marginBottom: 4,
+    lineHeight: 20,
   },
   timestampText: {
     fontSize: 10,
     color: "#999",
     textAlign: "right",
+  },
+  debugText: {
+    fontSize: 8,
+    color: "#999",
+    fontStyle: "italic",
+    marginTop: 4,
+    backgroundColor: "#f0f0f0",
+    padding: 2,
   },
   emptyContainer: {
     alignItems: "center",
@@ -648,5 +788,15 @@ const styles = StyleSheet.create({
   deleteButton: {
     marginLeft: 10,
     padding: 4,
+  },
+  individualDeleteButton: {
+    padding: 4,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height:1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 })
