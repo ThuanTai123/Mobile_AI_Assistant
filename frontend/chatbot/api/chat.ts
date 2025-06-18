@@ -91,7 +91,7 @@ export const processMessage = async (message: string): Promise<BotResponse> => {
   try {
     if (isWeatherQuery) {
       const city = await getCurrentCity();
-      const res = await axios.post(`${API_URL}/weather`, { message, city });
+      const res = await axios.post(`${API_URL}/weather`, { message });
       return res.data;
     }
 

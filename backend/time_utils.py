@@ -17,12 +17,17 @@ def extract_forecast_date(message: str) -> str:
     today = datetime.now()
 
     # Cách nói phổ biến
-    if "hôm nay" in message:
-        return today.strftime("%Y-%m-%d")
-    elif "ngày mai" in message or "mai" in message:
-        return (today + timedelta(days=1)).strftime("%Y-%m-%d")
-    elif "ngày mốt" in message or "mốt" in message:
-        return (today + timedelta(days=2)).strftime("%Y-%m-%d")
+    if any(kw in message for kw in [ "hôm nay", "bây giờ", "hiện tại", "thời điểm này", 
+        "ra sao", "như thế nào", "trời sao",
+        "có nắng", "có mưa", "đang mưa", "nắng không", "mưa không", "nắng à", "mưa à"
+        ]):
+        return datetime.now().strftime("%Y-%m-%d")
+
+    if "ngày mai" in message:
+        return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    if "ngày kia" in message:
+        return (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
 
     # Dạng ngày cụ thể: 22/6 hoặc 22-06
     match = re.search(r"(\d{1,2})[/-](\d{1,2})", message)

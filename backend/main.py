@@ -13,9 +13,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from gtts import gTTS
 from handle_device_command import handle_device_command
-from city_utils import extract_city
+from city_utils import CITY_MAP, extract_city
 from time_utils import extract_forecast_date
-from city_utils import normalize_city_name
 
 
 # Load API key từ .env
@@ -104,7 +103,13 @@ def get_weather(city, date=None):
 
     data = res.json()
     forecasts = data.get("list", [])
-    target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        if (target_date - today).days > 5:
+            return "📅 Dự báo thời tiết chỉ hỗ trợ trong 5 ngày tới. Bạn vui lòng hỏi ngày gần hơn."
+    except:
+        return "❌ Không xác định được ngày bạn yêu cầu."
+
 
     # Gom toàn bộ khung giờ trong ngày
     lines = []
@@ -129,26 +134,30 @@ def weather():
     data = request.json
     message = data.get("message", "")
     city_from_client = data.get("city", "").strip()
-
     print(f"[DEBUG] Message nhận được: {message}")
 
     # 1. Trích xuất thành phố
-    city = extract_city(message)
-    if not city and city_from_client:
-        city = city_from_client
-        print(f"[DEBUG] Dùng thành phố từ client gửi: {city}")
-    if not city:
-        city = "TP Hồ Chí Minh"
-        print(f"[DEBUG] Không tìm thấy thành phố, dùng mặc định: {city}")
-    city = normalize_city_name(city)
+    city_vi = extract_city(message)
+    if not city_vi and city_from_client:
+        city_vi = city_from_client
+        print(f"[DEBUG] Dùng thành phố từ client gửi: {city_vi}")
+    if not city_vi:
+        city_vi = "TP Hồ Chí Minh"
+        print(f"[DEBUG] Không tìm thấy thành phố, dùng mặc định: {city_vi}")
+
+    # 2. Chuẩn hóa tên thành phố để gọi API (tiếng Anh)
+    city_en = CITY_MAP.get(city_vi, city_vi)
+    print(f"[DEBUG] Thành phố trích xuất (VI): {city_vi}")
+    print(f"[DEBUG] Thành phố chuẩn để gọi API: {city_en}")
 
     # 2. Trích xuất ngày dự báo
     forecast_date = extract_forecast_date(message)
     print(f"[DEBUG] Ngày cần dự báo: {forecast_date}")
 
     # 3. Gọi hàm thời tiết
-    result = get_weather(city, forecast_date)
+    result = get_weather(city_en, forecast_date)
     return jsonify({"reply": result})
+
 # Tự động xóa file âm thanh sau vài phút
 def auto_delete_file(path, delay_minutes=10):
     def delete():
