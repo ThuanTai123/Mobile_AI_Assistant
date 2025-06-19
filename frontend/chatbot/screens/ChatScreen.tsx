@@ -1,21 +1,25 @@
-"use client"
-
-import { useState, useRef, useEffect } from "react"
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
+  FlatList,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Vibration,
-  SafeAreaView,
-  StatusBar,
+  Image,
   Modal,
+  ActivityIndicator,
   ScrollView,
   Alert,
+<<<<<<< Updated upstream
 } from "react-native"
 import {
   setupNotificationChannel,
@@ -41,11 +45,53 @@ interface Message {
   id: number
   text: string
   sender: "user" | "bot"
+=======
+  Keyboard,
+  TouchableWithoutFeedback,
+  Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { Audio } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import uuid from "react-native-uuid";
+import axios from "axios";
+import * as FileSystem from "expo-file-system";
+import mime from "mime";
+
+const { width, height } = Dimensions.get("window");
+
+interface RouteParams {
+  userId: string;
+  userName: string;
+>>>>>>> Stashed changes
 }
 
-const generateId = () => Date.now() + Math.floor(Math.random() * 1000)
+interface Message {
+  id: string;
+  senderId: string;
+  text: string;
+  timestamp: string;
+  image?: string;
+  audio?: string;
+  file?: {
+    uri: string;
+    name: string;
+    type: string;
+  };
+}
+
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+}
 
 const ChatScreen = () => {
+<<<<<<< Updated upstream
   const [chatHistory, setChatHistory] = useState<any[]>([])
   const [notes, setNotes] = useState<any[]>([])
   const [messages, setMessages] = useState<Message[]>([])
@@ -167,15 +213,71 @@ const ChatScreen = () => {
       handleVoiceResult(latestText)
     }
   }, [results])
+=======
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
+  const [newNoteContent, setNewNoteContent] = useState("");
+  const [file, setFile] = useState<Message["file"] | null>(null);
+  const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editNoteTitle, setEditNoteTitle] = useState("");
+  const [editNoteContent, setEditNoteContent] = useState("");
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emoji, setEmoji] = useState("");
 
-  const requestPermissions = async () => {
-    const { status } = await Notifications.requestPermissionsAsync()
-    if (status !== "granted") {
-      alert("Bạn cần cấp quyền thông báo để nhận nhắc nhở")
+  const flatListRef = useRef<FlatList>(null);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { userId, userName } = route.params as RouteParams;
+
+  useEffect(() => {
+    navigation.setOptions({ title: userName });
+  }, [navigation, userName]);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+>>>>>>> Stashed changes
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    loadMessages();
+    loadNotes();
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0 && flatListRef.current) {
+      scrollToBottom();
     }
-  }
+  }, [messages]);
 
   const scrollToBottom = () => {
+<<<<<<< Updated upstream
     flatListRef.current?.scrollToEnd({ animated: true })
   }
 
@@ -400,403 +502,844 @@ const handleSend = async (overrideText?: string) => {
         },
       ]
     );
+=======
+    flatListRef.current?.scrollToEnd({ animated: false });
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <View style={[styles.messageContainer, item.sender === "user" ? styles.userMessage : styles.botMessage]}>
-      <View style={[styles.messageBubble, item.sender === "user" ? styles.userBubble : styles.botBubble]}>
-        <Text style={styles.messageText}>{item.text}</Text>
+  const loadMessages = async () => {
+    try {
+      const storedMessages = await AsyncStorage.getItem("messages");
+      if (storedMessages) {
+        setMessages(JSON.parse(storedMessages));
+      }
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+    }
+>>>>>>> Stashed changes
+  };
+
+  const saveMessages = async (currentMessages: Message[]) => {
+    try {
+      await AsyncStorage.setItem("messages", JSON.stringify(currentMessages));
+    } catch (error) {
+      console.error("Failed to save messages:", error);
+    }
+  };
+
+  const loadNotes = async () => {
+    try {
+      const storedNotes = await AsyncStorage.getItem("notes");
+      if (storedNotes) {
+        setNotes(JSON.parse(storedNotes));
+      }
+    } catch (error) {
+      console.error("Failed to load notes:", error);
+    }
+  };
+
+  const saveNotes = async (currentNotes: Note[]) => {
+    try {
+      await AsyncStorage.setItem("notes", JSON.stringify(currentNotes));
+    } catch (error) {
+      console.error("Failed to save notes:", error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (newMessage.trim() === "" && !image && !file) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    let imageUrl = null;
+    if (image) {
+      imageUrl = await uploadImage(image);
+    }
+
+    let fileData = null;
+    if (file) {
+      fileData = await uploadFile(file);
+    }
+
+    const newMessageObject: Message = {
+      id: uuid.v4().toString(),
+      senderId: userId,
+      text: newMessage.trim(),
+      timestamp: new Date().toISOString(),
+      image: imageUrl || undefined,
+      file: fileData || undefined,
+    };
+
+    const updatedMessages = [...messages, newMessageObject];
+    setMessages(updatedMessages);
+    saveMessages(updatedMessages);
+    setNewMessage("");
+    setImage(null);
+    setFile(null);
+    setIsLoading(false);
+    setShowEmojiPicker(false);
+    scrollToBottom();
+  };
+
+  const uploadImage = async (uri: string): Promise<string | null> => {
+    try {
+      const response = await FileSystem.uploadAsync(
+        "https://api.cloudinary.com/v1_1/dj3w8u7fj/image/upload",
+        uri,
+        {
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "file",
+          mimeType: "image/jpeg",
+          parameters: {
+            upload_preset: "chat_app",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        return response.json.secure_url;
+      } else {
+        console.error("Upload failed:", response.body);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      return null;
+    }
+  };
+
+  const uploadFile = async (file: Message["file"]): Promise<any | null> => {
+    try {
+      const fileUri = file?.uri;
+      const fileName = file?.name;
+      const fileType = file?.type || mime.getType(fileName) || "application/octet-stream";
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: fileUri,
+        name: fileName,
+        type: fileType,
+      } as any);
+      formData.append("upload_preset", "chat_app");
+
+      const response = await axios.post(
+        "https://api.cloudinary.com/v1_1/dj3w8u7fj/raw/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        return {
+          url: response.data.secure_url,
+          name: fileName,
+          type: fileType,
+        };
+      } else {
+        console.error("Upload failed:", response.status, response.data);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      return null;
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      let permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          "Permission Required",
+          "Please grant permission to access your photos to send images."
+        );
+        return;
+      }
+
+      let pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+      });
+
+      if (!pickerResult.canceled) {
+        setImage(pickerResult.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking an image:", error);
+      Alert.alert(
+        "Error",
+        "An error occurred while trying to pick an image. Please try again."
+      );
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.type === "success") {
+        setFile({
+          uri: result.uri,
+          name: result.name || "Unknown File Name",
+          type: result.mimeType || "application/octet-stream",
+        });
+      } else {
+        console.warn("Document picking cancelled or failed");
+      }
+    } catch (error) {
+      console.error("Error picking a document:", error);
+      Alert.alert(
+        "Error",
+        "An error occurred while trying to pick a document. Please try again."
+      );
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const perm = await Audio.requestPermissionsAsync();
+      if (perm.status === "granted") {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+        const newRecording = new Audio.Recording();
+        await newRecording.prepareToRecordAsync(
+          Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+        );
+        await newRecording.startAsync();
+        setRecording(newRecording);
+        setIsRecording(true);
+      } else {
+        Alert.alert("Permissions not granted");
+      }
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+    }
+  };
+
+  const stopRecording = async () => {
+    setIsRecording(false);
+    try {
+      await recording?.stopAndUnloadAsync();
+      const uri = recording?.getURI();
+      if (uri) {
+        await uploadAudio(uri);
+      }
+      setRecording(null);
+    } catch (error) {
+      console.error("Failed to stop recording:", error);
+    }
+  };
+
+  const uploadAudio = async (uri: string) => {
+    setIsLoading(true);
+    try {
+      const response = await FileSystem.uploadAsync(
+        "https://api.cloudinary.com/v1_1/dj3w8u7fj/video/upload",
+        uri,
+        {
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "file",
+          mimeType: "audio/m4a",
+          parameters: {
+            upload_preset: "chat_app",
+            resource_type: "video",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const audioUrl = response.json.secure_url;
+        const newMessageObject: Message = {
+          id: uuid.v4().toString(),
+          senderId: userId,
+          text: "Sent an audio",
+          timestamp: new Date().toISOString(),
+          audio: audioUrl,
+        };
+        const updatedMessages = [...messages, newMessageObject];
+        setMessages(updatedMessages);
+        saveMessages(updatedMessages);
+      } else {
+        console.error("Audio upload failed:", response.body);
+      }
+    } catch (error) {
+      console.error("Error uploading audio:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const playSound = async (audioUrl: string) => {
+    try {
+      if (sound) {
+        await sound.unloadAsync();
+      }
+      const { sound: newSound } = await Audio.Sound.createAsync({ uri: audioUrl });
+      setSound(newSound);
+      await newSound.playAsync();
+    } catch (error) {
+      console.error("Failed to play sound:", error);
+    }
+  };
+
+  const addNote = () => {
+    if (newNoteTitle.trim() === "" || newNoteContent.trim() === "") {
+      Alert.alert("Error", "Please fill in both title and content.");
+      return;
+    }
+
+    const newNote: Note = {
+      id: uuid.v4().toString(),
+      title: newNoteTitle,
+      content: newNoteContent,
+      created_at: new Date().toISOString(),
+    };
+
+    const updatedNotes = [...notes, newNote];
+    setNotes(updatedNotes);
+    saveNotes(updatedNotes);
+    setNewNoteTitle("");
+    setNewNoteContent("");
+    setModalVisible(false);
+  };
+
+  const openEditModal = (note: Note) => {
+    setSelectedNote(note);
+    setEditNoteTitle(note.title);
+    setEditNoteContent(note.content);
+    setIsEditModalVisible(true);
+  };
+
+  const updateNote = () => {
+    if (!selectedNote) return;
+
+    const updatedNotes = notes.map((note) =>
+      note.id === selectedNote.id
+        ? {
+          ...note,
+          title: editNoteTitle,
+          content: editNoteContent,
+        }
+        : note
+    );
+
+    setNotes(updatedNotes);
+    saveNotes(updatedNotes);
+    setIsEditModalVisible(false);
+    setSelectedNote(null);
+  };
+
+  const handleDeleteNote = (noteId: string | undefined, noteTitle: string) => {
+    Alert.alert(
+      "Delete Note",
+      `Are you sure you want to delete the note "${noteTitle}"?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          onPress: () => {
+            const updatedNotes = notes.filter((note) => note.id !== noteId);
+            setNotes(updatedNotes);
+            saveNotes(updatedNotes);
+          },
+        },
+      ]
+    );
+  };
+
+  const renderMessageItem = ({ item }: { item: Message }) => {
+    const isCurrentUser = item.senderId === userId;
+    return (
+      <View
+        style={[
+          styles.messageContainer,
+          isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage,
+        ]}
+      >
+        {item.image && (
+          <Image source={{ uri: item.image }} style={styles.messageImage} />
+        )}
+        {item.file && (
+          <TouchableOpacity
+            style={styles.fileContainer}
+            onPress={() => {
+              // Implement file download or preview here
+              console.log("Download or preview file:", item.file);
+            }}
+          >
+            <Ionicons name="document-attach-outline" size={30} color="#2980b9" />
+            <Text style={styles.fileText}>{item.file.name}</Text>
+          </TouchableOpacity>
+        )}
+        {item.audio && (
+          <TouchableOpacity onPress={() => playSound(item.audio)}>
+            <Ionicons name="play-circle-outline" size={50} color="#2980b9" />
+          </TouchableOpacity>
+        )}
+        {item.text ? (
+          <Text style={styles.messageText}>{item.text}</Text>
+        ) : null}
+        <Text style={styles.timestampText}>
+          {new Date(item.timestamp).toLocaleString()}
+        </Text>
       </View>
+    );
+  };
+
+  const keyExtractor = (item: Message) => item.id;
+
+  const renderNoteItem = useCallback(({ item, index }: { item: Note; index: number }) => (
+    <View key={item.id || index} style={styles.noteItem}>
+      <View style={styles.noteHeader}>
+        <Text style={styles.noteTitle}>
+          {item.title || "Không có tiêu đề"}
+        </Text>
+        <TouchableOpacity 
+          onPress={() => handleDeleteNote(item.id, item.title || "Ghi chú")}
+          style={styles.individualDeleteButton}
+        >
+          <Ionicons name="trash-outline" size={18} color="#e74c3c" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.noteContent}>
+        {item.content || "Không có nội dung"}
+      </Text>
+      <Text style={styles.timestampText}>
+        {item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "Không có thời gian"}
+      </Text>
     </View>
-  )
+  ), []);
+
+  const renderInputArea = useMemo(() => (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.inputArea}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      {image && (
+        <View>
+          <Image source={{ uri: image }} style={styles.previewImage} />
+          <TouchableOpacity
+            style={styles.removeImageButton}
+            onPress={() => setImage(null)}
+          >
+            <Ionicons name="close-circle" size={24} color="red" />
+          </TouchableOpacity>
+        </View>
+      )}
+      {file && (
+        <View style={styles.filePreviewContainer}>
+          <Text style={styles.filePreviewText}>File: {file.name}</Text>
+          <TouchableOpacity onPress={() => setFile(null)}>
+            <Ionicons name="close-circle" size={24} color="red" />
+          </TouchableOpacity>
+        </View>
+      )}
+      <View style={styles.inputContainer}>
+        <TouchableOpacity
+          style={styles.emojiButton}
+          onPress={() => setShowEmojiPicker(!showEmojiPicker)}
+        >
+          <Text style={styles.emojiButtonText}>Emoji</Text>
+        </TouchableOpacity>
+        <TextInput
+          style={styles.input}
+          placeholder="Type a message..."
+          value={newMessage}
+          onChangeText={(text) => setNewMessage(text)}
+        />
+        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="send" size={24} color="#fff" />
+          )}
+        </TouchableOpacity>
+      </View>
+      <View style={styles.attachmentButtons}>
+        <TouchableOpacity style={styles.attachmentButton} onPress={pickImage}>
+          <Ionicons name="image-outline" size={24} color="#2980b9" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.attachmentButton} onPress={pickDocument}>
+          <Ionicons name="attach-outline" size={24} color="#2980b9" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.attachmentButton}
+          onPress={isRecording ? stopRecording : startRecording}
+        >
+          <Ionicons
+            name={isRecording ? "mic-off-outline" : "mic-outline"}
+            size={24}
+            color={isRecording ? "red" : "#2980b9"}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.attachmentButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Ionicons name="add" size={24} color="#2980b9" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.attachmentButton}
+          onPress={() => setIsNotesModalVisible(true)}
+        >
+          <Ionicons name="list-outline" size={24} color="#2980b9" />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  ), [
+    newMessage,
+    image,
+    file,
+    isLoading,
+    isRecording,
+    showEmojiPicker,
+    startRecording,
+    stopRecording,
+  ]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#4ECDC4" barStyle="dark-content" />
-
-      <KeyboardAvoidingView
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerText}>RUBY ASSISTANT</Text>
-        </View>
-
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
         <FlatList
           ref={flatListRef}
           data={messages}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMessage}
-          style={styles.messagesList}
+          renderItem={renderMessageItem}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.messagesContainer}
-          onContentSizeChange={scrollToBottom}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
         />
+        {renderInputArea}
 
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.textInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Nhập..."
-              placeholderTextColor="#999"
-              returnKeyType="send"
-              onSubmitEditing={() => handleSend()}
-              multiline
-            />
-            <TouchableOpacity onPress={() => handleSend()} style={styles.sendButton}>
-              <Ionicons name="send" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          {isListening && partialTranscript !== "" && (
-            <View style={{ padding: 8, paddingHorizontal: 12 }}>
-              <Text style={{ fontStyle: "italic", color: "#555" }}>
-                🎙️ Đang nói: <Text style={{ fontWeight: "600" }}>{partialTranscript}</Text>
-              </Text>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            setModalVisible(!modalVisible);
+          }}
+        >
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>Add New Note</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Note Title"
+                value={newNoteTitle}
+                onChangeText={setNewNoteTitle}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Note Content"
+                value={newNoteContent}
+                onChangeText={setNewNoteContent}
+                multiline
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonClose]}
+                  onPress={() => setModalVisible(!modalVisible)}
+                >
+                  <Text style={styles.textStyle}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonSave]}
+                  onPress={addNote}
+                >
+                  <Text style={styles.textStyle}>Save</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          )}
-          <View style={styles.bottomIcons}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => {
-                loadChatHistory()
-                setHistoryVisible(true)
-              }}
-            >
-              <Ionicons name="time-outline" size={28} color="#000" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={isListening ? stopListening : startListening}>
-              {isSpeaking ? (
-                <SpeakingMicIcon isSpeaking={true} />
-              ) : (
-                <Ionicons name={isListening ? "mic" : "mic-outline"} size={28} color={isListening ? "red" : "#000"} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => {
-                loadNotes()
-                setNotesVisible(true)
-              }}
-            >
-              <Ionicons name="calendar-outline" size={28} color="#000" />
-            </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </Modal>
 
-      <Modal transparent visible={historyVisible} animationType="slide" onRequestClose={() => setHistoryVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🕒 Lịch sử trò chuyện</Text>
-              <TouchableOpacity onPress={() => setHistoryVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDeleteChatHistory} style={styles.deleteButton}>
-                <Ionicons name="trash-outline" size={22} color="#e74c3c" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalContent}>
-              {chatHistory.length > 0 ? (
-                chatHistory.map((item, index) => (
-                  <View key={index} style={styles.historyItem}>
-                    <Text style={styles.historyText}>
-                      <Text style={styles.senderLabel}>{item.sender}:</Text> {item.message}
-                    </Text>
-                    <Text style={styles.timestampText}>{new Date(item.timestamp).toLocaleString("vi-VN")}</Text>
-                  </View>
-                ))
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>Chưa có lịch sử trò chuyện</Text>
-                  <Text style={styles.emptySubText}>Hãy bắt đầu cuộc trò chuyện đầu tiên!</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ✅ FIXED: Modal Ghi chú với debug chi tiết */}
-      <Modal transparent visible={notesVisible} animationType="slide" onRequestClose={() => setNotesVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>📝 Ghi chú của bạn</Text>
-              <TouchableOpacity onPress={() => setNotesVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDeleteNotes} style={styles.deleteButton}>
-                <Ionicons name="trash-outline" size={22} color="#e74c3c" />
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isNotesModalVisible}
+          onRequestClose={() => {
+            setIsNotesModalVisible(!isNotesModalVisible);
+          }}
+        >
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>Your Notes</Text>
+              <ScrollView style={styles.notesList}>
+                {notes.map((item, index) => renderNoteItem({ item, index }))}
+              </ScrollView>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => setIsNotesModalVisible(!isNotesModalVisible)}
+              >
+                <Text style={styles.textStyle}>Close</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalContent}>
-              {notes.length > 0 ? (
-                notes.map((note, index) => {
-                  console.log(`🎨 Rendering note ${index + 1}:`, note);
-                  
-                  return (
-                    <View key={note.id || index} style={styles.noteItem}>
-                      <View style={styles.noteHeader}>
-                        <Text style={styles.noteTitle}>
-                          {note.title || note.content || "Không có tiêu đề"}
-                        </Text>
-                        <TouchableOpacity 
-                          onPress={() => handleDeleteNote(note.id, note.title || note.content || "Ghi chú")}
-                          style={styles.individualDeleteButton}
-                        >
-                          <Ionicons name="trash-outline" size={18} color="#e74c3c" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.noteContent}>
-                        {note.content || note.title || "Không có nội dung"}
-                      </Text>
-                      <Text style={styles.timestampText}>
-                        {note.created_at ? new Date(note.created_at).toLocaleString("vi-VN") : "Không có thời gian"}
-                      </Text>
-                      <Text style={styles.debugText}>
-                        DEBUG: ID={note.id}, Title="{note.title}", Content="{note.content}"
-                      </Text>
-                    </View>
-                  )
-                })
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="document-text-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>Chưa có ghi chú nào</Text>
-                  <Text style={styles.emptySubText}>Hãy tạo ghi chú đầu tiên bằng cách nói "tạo ghi chú..."</Text>
-                </View>
-              )}
-            </ScrollView>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
-  )
-}
+        </Modal>
 
-export default ChatScreen
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isEditModalVisible}
+          onRequestClose={() => {
+            setIsEditModalVisible(!isEditModalVisible);
+          }}
+        >
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>Edit Note</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Note Title"
+                value={editNoteTitle}
+                onChangeText={setEditNoteTitle}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Note Content"
+                value={editNoteContent}
+                onChangeText={setEditNoteContent}
+                multiline
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonClose]}
+                  onPress={() => setIsEditModalVisible(!isEditModalVisible)}
+                >
+                  <Text style={styles.textStyle}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonSave]}
+                  onPress={updateNote}
+                >
+                  <Text style={styles.textStyle}>Update</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </TouchableWithoutFeedback>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#f0f0f0",
   },
-  overlay: {
+  messagesContainer: {
+    padding: 10,
+    paddingBottom: 80,
+  },
+  messageContainer: {
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    maxWidth: "70%",
+  },
+  currentUserMessage: {
+    backgroundColor: "#DCF8C6",
+    alignSelf: "flex-end",
+  },
+  otherUserMessage: {
+    backgroundColor: "#fff",
+    alignSelf: "flex-start",
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  timestampText: {
+    fontSize: 12,
+    color: "#777",
+    marginTop: 5,
+    textAlign: "right",
+  },
+  inputArea: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#ccc",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  input: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    marginRight: 10,
+    fontSize: 16,
+  },
+  sendButton: {
+    backgroundColor: "#2980b9",
+    borderRadius: 25,
+    width: 50,
+    height: 50,
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContainer: {
-    backgroundColor: "#fff",
+  attachmentButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 5,
+  },
+  attachmentButton: {
+    padding: 10,
+    borderRadius: 5,
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 5,
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "white",
+    borderRadius: 12,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: "white",
     borderRadius: 20,
-    width: "90%",
-    maxHeight: "80%",
+    padding: 35,
+    alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    width: "80%",
   },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+  button: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+    marginHorizontal: 5,
+  },
+  buttonClose: {
+    backgroundColor: "#e74c3c",
+  },
+  buttonSave: {
+    backgroundColor: "#2ecc71",
+  },
+  textStyle: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
   },
   modalTitle: {
-    fontSize: 18,
+    marginBottom: 15,
+    textAlign: "center",
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
   },
-  closeButton: {
-    padding: 4,
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    marginTop: 20,
   },
-  modalContent: {
-    padding: 20,
-  },
-  historyItem: {
-    backgroundColor: "#f8f9fa",
-    padding: 12,
+  fileContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ecf0f1",
+    padding: 10,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 5,
   },
-  historyText: {
+  fileText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: "#34495e",
+  },
+  filePreviewContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 10,
+    backgroundColor: "#f2f2f2",
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  filePreviewText: {
+    fontSize: 16,
+  },
+  emojiButton: {
+    padding: 8,
+    borderRadius: 5,
+    backgroundColor: "#3498db",
+    marginRight: 8,
+  },
+  emojiButtonText: {
+    color: "white",
     fontSize: 14,
-    color: "#333",
-    marginBottom: 4,
-  },
-  senderLabel: {
-    fontWeight: "bold",
-    color: "#4ECDC4",
   },
   noteItem: {
-    backgroundColor: "#fff3cd",
-    padding: 12,
+    padding: 15,
+    backgroundColor: "#f9f9f9",
     borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  noteTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
     marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: "#ffc107",
+  },
+  noteContent: {
+    fontSize: 16,
+    color: "#333",
+  },
+  notesList: {
+    width: "100%",
   },
   noteHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 4,
-  },
-  noteTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
-    marginRight: 8,
-  },
-  noteContent: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  timestampText: {
-    fontSize: 10,
-    color: "#999",
-    textAlign: "right",
-  },
-  debugText: {
-    fontSize: 8,
-    color: "#999",
-    fontStyle: "italic",
-    marginTop: 4,
-    backgroundColor: "#f0f0f0",
-    padding: 2,
-  },
-  emptyContainer: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 12,
-    fontWeight: "500",
-  },
-  emptySubText: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  keyboardContainer: {
-    flex: 1,
-  },
-  header: {
-    backgroundColor: "#4ECDC4",
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-    letterSpacing: 1,
-  },
-  messagesList: {
-    flex: 1,
-  },
-  messagesContainer: {
-    padding: 16,
-    paddingBottom: 5,
-  },
-  messageContainer: {
-    marginVertical: 4,
-  },
-  userMessage: {
-    alignItems: "flex-end",
-  },
-  botMessage: {
-    alignItems: "flex-start",
-  },
-  messageBubble: {
-    maxWidth: "75%",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  userBubble: {
-    backgroundColor: "#45B7B8",
-  },
-  botBubble: {
-    backgroundColor: "#4ECDC4",
-  },
-  messageText: {
-    fontSize: 16,
-    color: "#fff",
-    lineHeight: 20,
-  },
-  inputContainer: {
-    backgroundColor: "#fff",
-    paddingTop: 5,
-    paddingBottom: Platform.OS === "android" ? 12 : 0,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    maxHeight: 100,
-    backgroundColor: "#F8F8F8",
-    marginRight: 8,
-  },
-  sendButton: {
-    backgroundColor: "#4ECDC4",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bottomIcons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#4ECDC4",
-    paddingVertical: 16,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-  },
-  iconButton: {
-    padding: 8,
-  },
-  deleteButton: {
-    marginLeft: 10,
-    padding: 4,
+    marginBottom: 5,
   },
   individualDeleteButton: {
-    padding: 4,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height:1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    padding: 5,
   },
-})
+});
+
+export default ChatScreen;
