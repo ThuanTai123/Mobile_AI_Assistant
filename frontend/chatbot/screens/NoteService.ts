@@ -1,151 +1,263 @@
-import db from './database';
+import { getDatabase } from './database';
 
-const log = console.log;
-const error = console.error;
+export interface Note {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+}
 
-const runQuery = (
-  sql: string,
-  params: any[] = [],
-  onSuccess: (tx: any, results: any) => void = () => {},
-  onError: (tx: any, err: any) => boolean = (tx, err) => {
-    error('❌ SQL Error:', err);
-    return false;
+export interface NoteServiceError extends Error {
+  code?: string;
+  details?: any;
+}
+
+// Save a new note
+export const saveNote = async (noteTitle: string, noteContent: string): Promise<number> => {
+  if (!noteTitle?.trim() || !noteContent?.trim()) {
+    throw new Error('Title and content are required and cannot be empty');
   }
-) => {
-  db.transaction(tx => {
-    tx.executeSql(sql, params, onSuccess, onError);
-  });
-};
 
-export const createNoteTable = (): Promise<void> =>
-  new Promise((resolve, reject) => {
-    runQuery('DROP TABLE IF EXISTS notes;', [], () => {
-      log('✅ Dropped old notes table');
-      runQuery(
-        `CREATE TABLE notes (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT,
-          content TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );`,
-        [],
-        () => {
-          log('✅ Notes table created successfully');
-          resolve();
+  try {
+    const db = await getDatabase();
+
+    return new Promise<number>((resolve, reject) => {
+      console.log('💾 Saving note:', { noteTitle, noteContent });
+
+      db.transaction(
+        tx => {
+          tx.executeSql(
+            'INSERT INTO notes (title, content) VALUES (?, ?)',
+            [noteTitle.trim(), noteContent.trim()],
+            (_, results) => {
+              const insertId = results.insertId || 0;
+              console.log('✅ Note saved successfully with ID:', insertId);
+              resolve(insertId);
+            },
+            (_, error) => {
+              console.error('❌ Insert failed:', error);
+              reject(error);
+              return false;
+            }
+          );
         },
-        (tx, err) => {
-          error('❌ Error creating notes table:', err);
-          reject(err);
-          return false;
+        error => {
+          console.error('❌ Transaction error in saveNote:', error);
+          reject(error);
         }
       );
-    }, (tx, err) => {
-      error('❌ Error dropping notes table:', err);
-      reject(err);
-      return false;
     });
-  });
-
-export const saveNote = (title: string, content: string): Promise<void> =>
-  new Promise((resolve, reject) => {
-    log('💾 Saving note:', { title, content });
-
-    if (!title || !content) {
-      const err = new Error('Title and content are required');
-      error('❌ Validation failed:', err.message);
-      return reject(err);
-    }
-
-    runQuery(
-      'INSERT INTO notes (title, content) VALUES (?, ?);',
-      [title, content],
-      (tx, res) => {
-        log('✅ Note saved, insertId:', res.insertId);
-        resolve();
-      },
-      (tx, err) => {
-        error('❌ Error saving note:', err);
-        reject(err);
-        return false;
-      }
-    );
-  });
-
-export const fetchNotes = (callback: (notes: any[]) => void) => {
-  runQuery(
-    'SELECT * FROM notes ORDER BY created_at DESC;',
-    [],
-    (tx, results) => {
-      const data = [];
-      for (let i = 0; i < results.rows.length; i++) {
-        data.push(results.rows.item(i));
-      }
-      log('📝 Fetched notes:', data.length);
-      callback(data);
-    },
-    (tx, err) => {
-      error('❌ Error fetching notes:', err);
-      callback([]);
-      return false;
-    }
-  );
+  } catch (error) {
+    console.error('❌ saveNote failed:', error);
+    throw error;
+  }
 };
 
-export const deleteNoteById = (id: number, callback: () => void) => {
-  runQuery(
-    'DELETE FROM notes WHERE id = ?;',
-    [id],
-    () => {
-      log('✅ Note deleted:', id);
-      callback();
-    },
-    (tx, err) => {
-      error('❌ Error deleting note:', err);
-      return false;
-    }
-  );
-};
+// Fetch all notes with pagination
+export const fetchNotes = async (
+  limit: number = 100,
+  offset: number = 0
+): Promise<Note[]> => {
+  try {
+    const db = await getDatabase();
 
-export const testDatabase = () => {
-  log('🧪 Testing database...');
-  runQuery(
-    'PRAGMA table_info(notes);',
-    [],
-    (tx, res) => {
-      log('📋 Notes table structure:');
-      for (let i = 0; i < res.rows.length; i++) {
-        const col = res.rows.item(i);
-        log(`  - ${col.name}: ${col.type}`);
-      }
-      testInsert();
-    },
-    (tx, err) => {
-      error('❌ Error checking structure:', err);
-      return false;
-    }
-  );
-};
+    console.log('📖 Fetching notes...');
 
-const testInsert = () => {
-  const title = 'Test Note ' + Date.now();
-  const content = 'This is a test note content';
-
-  log('🧪 Testing insert:', { title, content });
-
-  saveNote(title, content)
-    .then(() => {
-      log('✅ Test insert successful');
-      fetchNotes(notes => {
-        log('✅ Test fetch successful, found', notes.length, 'notes');
-        const last = notes[0];
-        if (last?.title?.includes('Test Note')) {
-          deleteNoteById(last.id, () => {
-            log('✅ Test cleanup completed');
-          });
+    return new Promise<Note[]>((resolve, reject) => {
+      db.transaction(
+        tx => {
+          tx.executeSql(
+            'SELECT * FROM notes ORDER BY created_at DESC LIMIT ? OFFSET ?',
+            [limit, offset],
+            (_, results) => {
+              const notes: Note[] = [];
+              for (let i = 0; i < results.rows.length; i++) {
+                notes.push(results.rows.item(i));
+              }
+              console.log(`📋 ${notes.length} notes fetched`);
+              resolve(notes);
+            },
+            (_, error) => {
+              console.error('❌ Fetch failed:', error);
+              reject(error);
+              return false;
+            }
+          );
+        },
+        error => {
+          console.error('❌ Transaction failed during fetchNotes:', error);
+          reject(error);
         }
-      });
-    })
-    .catch(err => {
-      error('❌ Test insert failed:', err);
+      );
     });
+  } catch (error) {
+    console.error('❌ fetchNotes failed:', error);
+    throw error;
+  }
+};
+
+// Delete note by ID
+export const deleteNoteById = async (noteId: number): Promise<void> => {
+  if (!noteId || noteId <= 0) {
+    throw new Error('Valid note ID is required');
+  }
+
+  try {
+    const db = await getDatabase();
+
+    console.log('🗑️ Deleting note with ID:', noteId);
+
+    await new Promise<void>((resolve, reject) => {
+      db.transaction(
+        tx => {
+          tx.executeSql(
+            'DELETE FROM notes WHERE id = ?',
+            [noteId],
+            (_, results) => {
+              console.log(`✅ Deleted note ID ${noteId}, rows affected: ${results.rowsAffected}`);
+              if (results.rowsAffected === 0) {
+                console.warn(`⚠️ No note found with ID ${noteId}`);
+              }
+              resolve();
+            },
+            (_, error) => {
+              console.error('❌ Delete failed:', error);
+              reject(error);
+              return false;
+            }
+          );
+        },
+        error => {
+          console.error('❌ Delete transaction failed:', error);
+          reject(error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('❌ deleteNoteById failed:', error);
+    throw error;
+  }
+};
+
+// Update existing note
+export const updateNote = async (noteId: number, title: string, content: string): Promise<void> => {
+  if (!noteId || noteId <= 0) {
+    throw new Error('Valid note ID is required');
+  }
+  if (!title?.trim() || !content?.trim()) {
+    throw new Error('Title and content are required and cannot be empty');
+  }
+
+  try {
+    const db = await getDatabase();
+
+    await new Promise<void>((resolve, reject) => {
+      db.transaction(
+        tx => {
+          tx.executeSql(
+            'UPDATE notes SET title = ?, content = ? WHERE id = ?',
+            [title.trim(), content.trim(), noteId],
+            (_, results) => {
+              console.log(`✅ Updated note ID ${noteId}, rows affected: ${results.rowsAffected}`);
+              if (results.rowsAffected === 0) {
+                console.warn(`⚠️ No note found with ID ${noteId}`);
+              }
+              resolve();
+            },
+            (_, error) => {
+              console.error('❌ Update failed:', error);
+              reject(error);
+              return false;
+            }
+          );
+        },
+        error => {
+          console.error('❌ Update transaction failed:', error);
+          reject(error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('❌ updateNote failed:', error);
+    throw error;
+  }
+};
+
+// Get notes count
+export const getNotesCount = async (): Promise<number> => {
+  try {
+    const db = await getDatabase();
+
+    return new Promise<number>((resolve, reject) => {
+      db.transaction(
+        tx => {
+          tx.executeSql(
+            'SELECT COUNT(*) as count FROM notes',
+            [],
+            (_, results) => {
+              const count = results.rows.item(0).count;
+              console.log(`📊 Notes count: ${count}`);
+              resolve(count);
+            },
+            (_, error) => {
+              console.error('❌ Count query failed:', error);
+              reject(error);
+              return false;
+            }
+          );
+        },
+        error => {
+          console.error('❌ Count transaction failed:', error);
+          reject(error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('❌ getNotesCount failed:', error);
+    throw error;
+  }
+};
+
+// Search notes by title or content
+export const searchNotes = async (searchTerm: string): Promise<Note[]> => {
+  if (!searchTerm?.trim()) {
+    return [];
+  }
+
+  try {
+    const db = await getDatabase();
+
+    return new Promise<Note[]>((resolve, reject) => {
+      const searchPattern = `%${searchTerm.trim()}%`;
+      
+      db.transaction(
+        tx => {
+          tx.executeSql(
+            'SELECT * FROM notes WHERE title LIKE ? OR content LIKE ? ORDER BY created_at DESC',
+            [searchPattern, searchPattern],
+            (_, results) => {
+              const notes: Note[] = [];
+              for (let i = 0; i < results.rows.length; i++) {
+                notes.push(results.rows.item(i));
+              }
+              console.log(`🔍 Found ${notes.length} notes matching "${searchTerm}"`);
+              resolve(notes);
+            },
+            (_, error) => {
+              console.error('❌ Search failed:', error);
+              reject(error);
+              return false;
+            }
+          );
+        },
+        error => {
+          console.error('❌ Search transaction failed:', error);
+          reject(error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('❌ searchNotes failed:', error);
+    throw error;
+  }
 };
