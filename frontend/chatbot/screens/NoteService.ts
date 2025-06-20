@@ -1,3 +1,4 @@
+
 import db from './database';
 
 const log = console.log;
@@ -149,3 +150,4 @@ const testInsert = () => {
       error('❌ Test insert failed:', err);
     });
 };
+

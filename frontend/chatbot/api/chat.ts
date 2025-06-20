@@ -7,6 +7,7 @@ const API_URL = 'http://192.168.30.222:5000';
 
 export interface BotResponse {
   reply: string;
+  type?:string;
 }
 
 export const processMessage = async (message: string): Promise<BotResponse> => {
@@ -29,6 +30,7 @@ export const processMessage = async (message: string): Promise<BotResponse> => {
 
     if (isNote) {
       const res = await axios.post(`${API_URL}/note`, { content: message });
+      
       return res.data;
     }
 

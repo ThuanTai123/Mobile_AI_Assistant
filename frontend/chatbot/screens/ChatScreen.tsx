@@ -35,7 +35,6 @@ import useVoice from './useVoice';
 import SpeakingMicIcon from './SpeakingMicIcon';
 import { getCurrentCity } from './location';
 import { processMessage } from '../api/chat';
-import SQLite from "react-native-sqlite-storage"
 import { createChatTable, fetchChatHistory, saveMessage } from "./ChatService"
 import { createNoteTable, fetchNotes, saveNote, deleteNoteById, testDatabase } from "./NoteService"
 import { deleteAllChatHistory, deleteAllNotes } from "./database"
@@ -76,6 +75,7 @@ const ChatScreen = () => {
   const [notes, setNotes] = useState<any[]>([])
   const [historyVisible, setHistoryVisible] = useState(false)
   const [notesVisible, setNotesVisible] = useState(false)
+  const [currentCity, setCurrentCity] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<any[]>([])
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -88,14 +88,6 @@ const ChatScreen = () => {
   setInputText(text);    // Hiển thị vào input (nếu cần)
 };
 
-  const db = SQLite.openDatabase(
-    {
-      name: "ChatApp.db",
-      location: "default",
-    },
-    () => console.log("Database opened"),
-    (error: any) => console.error("DB error:", error),
-  )
   // Hàm load lại dữ liệu từ database
   const loadChatHistory = () => {
     fetchChatHistory((history: any[]) => {
@@ -119,7 +111,6 @@ const ChatScreen = () => {
       });
     })
   }
-
   // Hàm xóa ghi chú theo ID
   const handleDeleteNote = (noteId: number, noteTitle: string) => {
     Alert.alert(
@@ -178,15 +169,11 @@ const ChatScreen = () => {
     const init = async () => {
     await setupNotificationHandler();
     await requestNotificationPermission();  
-    await setupNotificationChannel(); 
-   setTimeout(async () => {
-      const id = await scheduleReminderNotification(15, "🔔 Thông báo test sau 15 giây");
-      console.log("📋 Đã đặt lịch với ID:", id);
-    }, 1000);
-
+    await setupNotificationChannel();
+    await requestPermissions();
+    await requestMicrophonePermission();
     };
-    requestPermissions();
-    requestMicrophonePermission();
+    
     init();
   }, []);
   useEffect(() => {
@@ -196,7 +183,16 @@ const ChatScreen = () => {
     }
   }, [results]);
 
-
+ useEffect(() => {
+      const fetchCity = async () => {
+        const city = await getCurrentCity();
+        if (city) {
+          setCurrentCity(city);
+        }
+      };
+      fetchCity(); // gọi ngay khi màn hình load
+    }, 
+  []);
   const requestPermissions = async () => {
     const { status } = await Notifications.requestPermissionsAsync()
     if (status !== "granted") {
@@ -280,6 +276,11 @@ const handleSend = async (overrideText?: string) => {
     
     setMessages((prev) => [...prev, botMessage]);
     scrollToBottom();
+    console.log("✅ Bot type:", botResponse.type)
+    if (botResponse.type === 'note_created') {
+      loadNotes();
+      setNotesVisible(true);
+    }
     if (!isReminder) {
       setIsSpeaking(true);
       Speech.speak(botResponse.reply, {
@@ -476,5 +477,4 @@ const handleSend = async (overrideText?: string) => {
     </SafeAreaView>
   )
 }
-
 export default ChatScreen
