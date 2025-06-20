@@ -32,7 +32,7 @@ def extract_forecast_date(message: str) -> str:
     if "ngày mai" in message:
         return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     
-    if "ngày kia" in message:
+    if "ngày mốt" in message:
         return (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
     
     # Cách nói phổ biến
