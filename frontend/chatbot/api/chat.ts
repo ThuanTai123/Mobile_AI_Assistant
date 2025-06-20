@@ -28,7 +28,7 @@ export const processMessage = async (message: string): Promise<BotResponse> => {
     }
 
     if (isNote) {
-      const res = await axios.post(`${API_URL}/note`, { note: message });
+      const res = await axios.post(`${API_URL}/note`, { content: message });
       return res.data;
     }
 
