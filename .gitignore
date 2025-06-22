@@ -4,3 +4,4 @@ frontend/my-chatbot-project/node_modules/node_modules/.expo/
 .idea/
 __pycache__/
 *.pyc
+backend/.env
