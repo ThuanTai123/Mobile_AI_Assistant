@@ -16,7 +16,6 @@ from handle_device_command import handle_device_command
 from city_utils import CITY_MAP, extract_city
 from time_utils import extract_forecast_date
 
-
 # Load API key từ .env
 load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
@@ -42,8 +41,26 @@ class Appointment(db.Model):
 AUDIO_FOLDER = "static/audio"
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
-# Ghi chú, công việc, lịch hẹn dạng tạm (RAM)
-notes = []
+# ✅ SỬA: Khởi tạo SQLite cho notes thay vì RAM
+def init_notes_db():
+    conn = sqlite3.connect('notes.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("✅ Notes database initialized")
+
+# Gọi khi khởi động
+init_notes_db()
+
+# Công việc, lịch hẹn dạng tạm (RAM)
 tasks = []
 appointments = []
 
@@ -77,8 +94,6 @@ def parse_reminder(text):
         return remind_time, note    
     return None,None
 
-# Hàm lấy thời tiết kết hợp current và forecast
-
 def get_weather(city, date=None):
     encoded_city = urllib.parse.quote(city)
     today = datetime.now().date()
@@ -110,13 +125,10 @@ def get_weather(city, date=None):
     except:
         return "❌ Không xác định được ngày bạn yêu cầu."
 
-
     # Gom toàn bộ khung giờ trong ngày
     lines = []
     for item in forecasts:
-        # Parse thời gian UTC từ dt_txt, gán timezone UTC;
         dt_utc = datetime.strptime(item['dt_txt'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        # Chuyển về múi giờ Việt Nam (UTC+7)
         dt_local = dt_utc.astimezone(timezone(timedelta(hours=7)))
         if dt_local.date() == target_date:
             desc = item['weather'][0]['description']
@@ -176,6 +188,7 @@ def chat_endpoint():
         body = request.get_json()
         user_message = body.get("message", "").lower().strip()
         now = datetime.now()
+        
         # 1. Kiểm tra lệnh điều khiển thiết bị
         device_response = handle_device_command(user_message)
         if device_response:
@@ -249,25 +262,108 @@ def chat_endpoint():
         print("Lỗi:", str(e))
         return jsonify({"reply": "Xin lỗi, có lỗi xảy ra", "error": str(e)}), 500
 
-
 @app.route("/static/audio/<filename>")
 def serve_audio(filename):
     return send_from_directory(AUDIO_FOLDER, filename)
 
+# ✅ SỬA: Endpoint note với SQLite và BotResponse format
 @app.route('/note', methods=['POST'])
 def create_note():
     data = request.json
-    note = {
-        'id': len(notes) + 1,
-        'content': data['content'],
-        'created_at': datetime.now().isoformat()
-    }
-    notes.append(note)
-    return jsonify(note), 201
+    content = data.get('content', '')
+    
+    print(f"📝 [NOTE] Received content: {content}")
+    
+    # Trích xuất nội dung ghi chú từ message
+    note_content = content
+    note_title = "Ghi chú"
+    
+    if 'tạo ghi chú' in content.lower():
+        note_content = content.lower().replace('tạo ghi chú', '').strip()
+        note_title = note_content if note_content else "Ghi chú"
+    
+    print(f"📝 [NOTE] Processed - Title: {note_title}, Content: {note_content}")
+    
+    try:
+        # ✅ Lưu vào SQLite
+        conn = sqlite3.connect('notes.db')
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO notes (title, content) VALUES (?, ?)', (note_title, note_content))
+        note_id = cursor.lastrowid
+        created_at = datetime.now().isoformat()
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ [NOTE] Saved to database with ID: {note_id}")
+        
+        # Tạo phản hồi
+        reply_text = f"Đã tạo ghi chú '{note_content}' thành công!"
+        
+        # Tạo file âm thanh
+        try:
+            tts = gTTS(text=reply_text, lang="vi", tld="com.vn")
+            filename = f"{uuid.uuid4()}.mp3"
+            filepath = os.path.join(AUDIO_FOLDER, filename)
+            tts.save(filepath)
+            auto_delete_file(filepath)
+            
+            return jsonify({
+                'reply': reply_text,
+                'type': 'note_created',
+                'audio_url': f"/static/audio/{filename}",
+                'note_data': {
+                    'id': note_id,
+                    'title': note_title,
+                    'content': note_content,
+                    'created_at': created_at
+                }
+            }), 201
+            
+        except Exception as tts_error:
+            print(f"⚠️ [NOTE] TTS Error: {tts_error}")
+            return jsonify({
+                'reply': reply_text,
+                'type': 'note_created',
+                'note_data': {
+                    'id': note_id,
+                    'title': note_title,
+                    'content': note_content,
+                    'created_at': created_at
+                }
+            }), 201
+            
+    except Exception as e:
+        print(f"❌ [NOTE] Database Error: {e}")
+        return jsonify({
+            'reply': 'Có lỗi khi tạo ghi chú. Vui lòng thử lại.',
+            'type': 'error'
+        }), 500
 
+# ✅ THÊM: Endpoint lấy notes từ server
 @app.route('/note', methods=['GET'])
 def get_notes():
-    return jsonify(notes)
+    try:
+        conn = sqlite3.connect('notes.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, title, content, created_at FROM notes ORDER BY created_at DESC')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        notes = []
+        for row in rows:
+            notes.append({
+                'id': row[0],
+                'title': row[1],
+                'content': row[2],
+                'created_at': row[3]
+            })
+        
+        print(f"📝 [NOTE] Retrieved {len(notes)} notes from database")
+        return jsonify(notes)
+        
+    except Exception as e:
+        print(f"❌ [NOTE] Error retrieving notes: {e}")
+        return jsonify([]), 500
 
 @app.route('/task', methods=['POST'])
 def create_task():
@@ -283,7 +379,7 @@ def create_task():
     task = {
         'id': len(tasks) + 1,
         'task': task_text,
-        'remind_time': remind_time  # Có thể None nếu không gửi
+        'remind_time': remind_time
     }
     tasks.append(task)
     reply_text = f"🛎️ Đã tạo nhắc việc: {task_text}"
@@ -291,23 +387,50 @@ def create_task():
         reply_text += f" lúc {remind_time}"
     return jsonify({'reply': reply_text}), 201
 
-
 @app.route('/task', methods=['GET'])
 def get_tasks():
     return jsonify(tasks)
 
+# ✅ SỬA: Endpoint appointment với BotResponse format
 @app.route('/appointment', methods=['POST'])
 def create_appointment():
     data = request.json
+    text = data.get('text', '')
+    
+    print(f"📅 [APPOINTMENT] Received text: {text}")
+    
+    # Trích xuất thông tin lịch hẹn từ text
     appointment = {
         'id': len(appointments) + 1,
-        'title': data['title'],
-        'date': data['date'],
-        'time': data['time'],
-        'location': data['location']
+        'title': text,
+        'date': 'TBD',
+        'time': 'TBD',
+        'location': 'TBD'
     }
     appointments.append(appointment)
-    return jsonify(appointment), 201
+    
+    # ✅ Trả về BotResponse format
+    reply_text = f"Đã tạo lịch hẹn: {text}"
+    
+    try:
+        tts = gTTS(text=reply_text, lang="vi", tld="com.vn")
+        filename = f"{uuid.uuid4()}.mp3"
+        filepath = os.path.join(AUDIO_FOLDER, filename)
+        tts.save(filepath)
+        auto_delete_file(filepath)
+        
+        return jsonify({
+            'reply': reply_text,
+            'type': 'appointment_created',
+            'audio_url': f"/static/audio/{filename}"
+        }), 201
+        
+    except Exception as e:
+        print(f"⚠️ [APPOINTMENT] TTS Error: {e}")
+        return jsonify({
+            'reply': reply_text,
+            'type': 'appointment_created'
+        }), 201
 
 @app.route('/appointment', methods=['GET'])
 def get_appointments():
@@ -355,4 +478,4 @@ def check_appointments():
 threading.Thread(target=check_appointments, daemon=True).start()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)  # Quan trọng để dùng trên di động
+    app.run(debug=True, host="0.0.0.0", port=5000)
