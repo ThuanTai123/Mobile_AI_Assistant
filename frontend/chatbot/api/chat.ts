@@ -1,9 +1,9 @@
 import axios from "axios"
 import { getCurrentCity } from "../screens/location"
-import { handleDeviceCommand } from "../screens/DeviceCommandHandler"
+import { handleDeviceCommand } from "../utils/DeviceCommandHandler"
 
 // ⚠️ Đổi IP nội bộ nếu cần
-const API_URL = "http://192.168.1.44:5000"
+const API_URL = "http://192.168.30.222:5000"
 
 export interface BotResponse {
   reply: string

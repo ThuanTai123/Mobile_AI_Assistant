@@ -42,9 +42,6 @@ def extract_forecast_date(message: str) -> str:
         ]):
         return datetime.now().strftime("%Y-%m-%d")
 
-
-
-
     # (Tuỳ chọn) Tìm theo thứ trong tuần: "thứ 7", "chủ nhật"
     weekdays = {
         "thứ hai": 0, "thứ ba": 1, "thứ tư": 2,
@@ -59,3 +56,67 @@ def extract_forecast_date(message: str) -> str:
             return (today + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
 
     return None  # Không xác định được ngày
+
+def parse_reminder(text):
+    text = text.lower().strip()
+
+    pattern_relative = re.compile(
+        r'''
+        (?:
+            # Trường hợp mở đầu bằng "nhắc"
+            (?:(?:nhắc)(?: giúp)?(?: tôi)?|làm ơn nhắc(?: tôi)?)
+            \s*(?P<action1>.+?)\s*
+            (?:trong|sau)\s*(?P<number1>\d+)\s*(?P<unit1>giây|phút|giờ|ngày|tuần)(?: nữa)?
+        )
+        |
+        (?:
+            # Trường hợp mở đầu bằng "trong/sau"
+            (?:trong|sau)\s*(?P<number2>\d+)\s*(?P<unit2>giây|phút|giờ|ngày|tuần)(?: nữa)?[,]?\s*
+            (?:(?:hãy\s*)?(?:nhắc)(?: giúp)?(?: tôi)?|làm ơn nhắc(?: tôi)?)\s*(?P<action2>.+?)
+        )
+        |
+        (?:
+            # Trường hợp mở đầu bằng số thời gian
+            (?P<number3>\d+)\s*(?P<unit3>giây|phút|giờ|ngày|tuần)(?: nữa)?[,]?\s*
+            (?:(?:hãy\s*)?(?:nhắc)(?: giúp)?(?: tôi)?|làm ơn nhắc(?: tôi)?)?\s*(?P<action3>.+?)
+        )
+        ''',
+        re.IGNORECASE | re.VERBOSE
+    )
+
+    m = pattern_relative.search(text)
+    if not m:
+        return None, None
+
+    # Ưu tiên group nào khớp
+    if m.group("action1"):
+        action = m.group("action1").strip()
+        number = int(m.group("number1"))
+        unit = m.group("unit1")
+    elif m.group("action2"):
+        action = m.group("action2").strip()
+        number = int(m.group("number2"))
+        unit = m.group("unit2")
+    elif m.group("action3"):
+        action = m.group("action3").strip()
+        number = int(m.group("number3"))
+        unit = m.group("unit3")
+    else:
+        return None, None
+
+    now = datetime.now()
+    if unit == 'giây':
+        remind_time = now + timedelta(seconds=number)
+    elif unit == 'phút':
+        remind_time = now + timedelta(minutes=number)
+    elif unit == 'giờ':
+        remind_time = now + timedelta(hours=number)
+    elif unit == 'ngày':
+        remind_time = now + timedelta(days=number)
+    elif unit == 'tuần':
+        remind_time = now + timedelta(weeks=number)
+    else:
+        return None, None
+
+    note = f'Nhắc nhở {action}'
+    return remind_time, note

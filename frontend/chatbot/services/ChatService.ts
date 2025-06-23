@@ -1,4 +1,4 @@
-import db from './database';
+import db from '../screens/database';
 
 export const createChatTable = () => {
   db.transaction(tx => {
@@ -13,16 +13,26 @@ export const createChatTable = () => {
   });
 };
 
-export const saveMessage = (sender: string, message: string) => {
-  db.transaction(tx => {
-    tx.executeSql(
-      'INSERT INTO chat_history (sender, message) VALUES (?, ?);',
-      [sender, message],
-      () => console.log('Message saved'),
-      (tx, error) => console.error('Error saving message', error)
-    );
+export const saveMessage = (sender: string, message: string): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'INSERT INTO chat_history (sender, message) VALUES (?, ?);',
+        [sender, message],
+        () => {
+          console.log('✅ Message saved');
+          resolve(true); // Trả về thành công
+        },
+        (tx, error) => {
+          console.error('❌ Error saving message', error);
+          resolve(false); // Không reject, để tránh crash app
+          return false;
+        }
+      );
+    });
   });
 };
+
 
 export const fetchChatHistory = (callback: (messages: any[]) => void) => {
   db.transaction(tx => {

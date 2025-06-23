@@ -4,7 +4,7 @@ import {
   increaseVolume,
   decreaseVolume,
   openNavigationBar,
-} from './DeviceControls';
+} from '../screens/DeviceControls';
 
 import * as Brightness from 'expo-brightness';
 import AndroidOpenSettings from 'react-native-android-open-settings';

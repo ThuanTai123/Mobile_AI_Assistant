@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from gtts import gTTS
 from handle_device_command import handle_device_command
 from city_utils import CITY_MAP, extract_city
-from time_utils import extract_forecast_date
+from time_utils import extract_forecast_date,parse_reminder
 
 # Load API key từ .env
 load_dotenv()
@@ -67,33 +67,7 @@ appointments = []
 # Tạo bảng database
 with app.app_context():
     db.create_all()
-
-def parse_reminder(text):
-    text = text.lower().strip()
-
-    # Dạng "nhắc tôi ... trong X giây/phút/giờ/ngày nữa"
-    pattern_relative = re.compile(r'nhắc(?: tôi)? (.+?) trong (\d+) (giây|phút|giờ|ngày) nữa')
-    m_rel = pattern_relative.search(text)
-    if m_rel:
-        note = 'Nhắc nhở ' + m_rel.group(1).strip()
-        number = int(m_rel.group(2))
-        unit = m_rel.group(3)
-
-        now = datetime.now()
-        if unit == 'giây':
-            remind_time = now + timedelta(seconds=number)
-        elif unit == 'phút':
-            remind_time = now + timedelta(minutes=number)
-        elif unit == 'giờ':
-            remind_time = now + timedelta(hours=number)
-        elif unit == 'ngày':
-            remind_time = now + timedelta(days=number)
-        else:
-            return None, None
-
-        return remind_time, note    
-    return None,None
-
+    
 def get_weather(city, date=None):
     encoded_city = urllib.parse.quote(city)
     today = datetime.now().date()

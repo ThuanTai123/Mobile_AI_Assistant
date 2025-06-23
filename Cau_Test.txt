@@ -6,11 +6,11 @@
 "Trời Đà Nẵng hiện tại có nắng không?"
 
 📅 Dự báo thời tiết ngày cụ thể
-"Thời tiết ở Đà Lạt ngày 20/6/2025 thế nào?"
+"Thời tiết ở Lâm Đồng ngày 27/6/2025 thế nào?"
 
-"Cho mình biết dự báo ở Huế vào ngày 22 tháng 6 nhé."
+"Cho mình biết dự báo ở Huế vào ngày 26 tháng 6 nhé."
 
-"Ngày 21-06, thời tiết tại Nha Trang ra sao?"
+"Ngày 25-06, thời tiết tại Huế ra sao?"
 
 📆 Dự báo ngày gần (ngày mai, mốt)
 "Ngày mai ở Hà Nội có mưa không?"

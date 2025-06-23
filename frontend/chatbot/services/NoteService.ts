@@ -1,5 +1,5 @@
 
-import db from './database';
+import db from '../screens/database';
 
 const log = console.log;
 const error = console.error;
