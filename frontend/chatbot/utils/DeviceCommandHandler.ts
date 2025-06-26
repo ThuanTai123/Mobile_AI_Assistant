@@ -4,6 +4,10 @@ import {
   increaseVolume,
   decreaseVolume,
   openNavigationBar,
+  setVolumeLevel,
+  setBrightnessLevel,
+  getVolumeLevel,
+  getBrightnessLevel,
 } from '../screens/DeviceControls';
 
 import * as Brightness from 'expo-brightness';
@@ -16,7 +20,14 @@ import AndroidOpenSettings from 'react-native-android-open-settings';
  */
 export const handleDeviceCommand = async (message: string): Promise<string | null> => {
   const msg = message.toLowerCase();
-
+  const extractLevel = (msg: string): number | null => {
+    const match = msg.match(/(?:mức|đặt|đến|tới)\s*(\d{1,3})\s*(%|phần trăm)?/);
+    if (match) {
+      const level = parseInt(match[1], 10);
+      return Math.max(0, Math.min(100, level));
+    }
+    return null;
+  };
   // Flashlight
   if (msg.includes('bật đèn flash')) {
     await toggleFlashlight(true);
@@ -40,33 +51,59 @@ export const handleDeviceCommand = async (message: string): Promise<string | nul
   }
 
   // Âm lượng
-  if (msg.includes('tăng âm lượng')) {
-    increaseVolume();
-    return 'Đã tăng âm lượng 🔊';
+  if (msg.includes('âm lượng')) {
+    const level = extractLevel(msg);
+    if (level !== null) {
+      await setVolumeLevel(level);
+      return `Đã đặt âm lượng đến mức ${level}% 🔊`;
+    }
+    if (msg.includes('tăng')) {
+      await increaseVolume();
+      return 'Đã tăng âm lượng 🔊';
+    }
+    if (msg.includes('giảm')) {
+      await decreaseVolume();
+      return 'Đã giảm âm lượng 🔉';
+    }
   }
-
-  if (msg.includes('giảm âm lượng')) {
-    decreaseVolume();
-    return 'Đã giảm âm lượng 🔉';
-  }
-
   // Thanh điều hướng
   if (msg.includes('mở thanh điều hướng')) {
     openNavigationBar();
     return 'Đã mở thanh điều hướng 📱';
   }
 
-  // Độ sáng màn hình
-  if (msg.includes('tăng độ sáng')) {
+// Độ sáng
+  if (msg.includes('độ sáng')) {
+    const level = extractLevel(msg);
+    if (level !== null) {
+      await setBrightnessLevel(level);
+      return `Đã đặt độ sáng đến mức ${level}% 🌞`;
+    }
     const current = await Brightness.getBrightnessAsync();
-    await Brightness.setBrightnessAsync(Math.min(current + 0.2, 1));
-    return '🌞 Đã tăng độ sáng màn hình.';
+    if (msg.includes('tăng')) {
+      await Brightness.setBrightnessAsync(Math.min(current + 0.2, 1));
+      return '🌞 Đã tăng độ sáng.';
+    }
+    if (msg.includes('giảm')) {
+      await Brightness.setBrightnessAsync(Math.max(current - 0.2, 0.1));
+      return '🌙 Đã giảm độ sáng.';
+    }
   }
 
-  if (msg.includes('giảm độ sáng')) {
-    const current = await Brightness.getBrightnessAsync();
-    await Brightness.setBrightnessAsync(Math.max(current - 0.2, 0.1));
-    return '🌙 Đã giảm độ sáng màn hình.';
+    // Hỏi mức âm lượng hiện tại
+  if (msg.includes('âm lượng hiện tại') || msg.includes('mức âm lượng')) {
+    const level = await getVolumeLevel();
+    return level >= 0
+      ? `🔊 Âm lượng hiện tại là ${level}%.`
+      : 'Không thể lấy được mức âm lượng.';
+  }
+
+  // Hỏi độ sáng hiện tại
+  if (msg.includes('độ sáng hiện tại') || msg.includes('mức độ sáng')) {
+    const level = await getBrightnessLevel();
+    return level >= 0
+      ? `🌞 Độ sáng hiện tại là ${level}%.`
+      : 'Không thể lấy được độ sáng.';
   }
 
   // Mở cài đặt WiFi

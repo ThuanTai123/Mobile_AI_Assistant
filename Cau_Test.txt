@@ -6,7 +6,6 @@
 "Trời Đà Nẵng hiện tại có nắng không?"
 
 📅 Dự báo thời tiết ngày cụ thể
-"Thời tiết ở Lâm Đồng ngày 27/6/2025 thế nào?"
 
 "Cho mình biết dự báo ở Huế vào ngày 26 tháng 6 nhé."
 
@@ -18,3 +17,5 @@
 "Thời tiết ngày mốt ở Cần Thơ như thế nào?"
 
 "Ngày mai trời có nắng ở TP Hồ Chí Minh không?"
+
+Thời tiết ở Huế ngày 27/6/2025 thế nào?

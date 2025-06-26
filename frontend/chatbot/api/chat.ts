@@ -1,9 +1,10 @@
 import axios from "axios"
 import { getCurrentCity } from "../screens/location"
 import { handleDeviceCommand } from "../utils/DeviceCommandHandler"
+import { getApiUrl } from '../services/apiConfig';
 
 // ⚠️ Đổi IP nội bộ nếu cần
-const API_URL = "http://192.168.30.222:5000"
+const API_URL = "http://192.168.1.208:5000"
 
 export interface BotResponse {
   reply: string
@@ -73,6 +74,7 @@ export const processMessage = async (message: string): Promise<BotResponse> => {
     return res.data
   } catch (error: any) {
     console.error("Lỗi xử lý message:", error.message)
+    throw new Error('❌ Lỗi xử lý message: ' + (error?.response?.data?.error || error?.message));
     return { reply: "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau." }
   }
 }

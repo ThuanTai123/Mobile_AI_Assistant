@@ -163,6 +163,7 @@ def chat_endpoint():
         user_message = body.get("message", "").lower().strip()
         now = datetime.now()
         
+        print(f">> Tin nhắn nhận được: {user_message}")
         # 1. Kiểm tra lệnh điều khiển thiết bị
         device_response = handle_device_command(user_message)
         if device_response:

@@ -4,23 +4,17 @@ import { useState, useRef, useEffect } from "react"
 import {
   View,
   Text,
-  TextInput,
   FlatList,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Vibration,
   SafeAreaView,
   StatusBar,
-  Modal,
-  ScrollView,
   Alert,
 } from "react-native"
 import {
   setupNotificationChannel,
   requestNotificationPermission,
   setupNotificationHandler,
-  scheduleReminderNotification,
 } from "../utils/Notifications"
 import styles from "../styles/ChatStyles"
 import useVoice from "../hooks/useVoice"
@@ -50,6 +44,7 @@ const ChatScreen = () => {
   const [currentCity, setCurrentCity] = useState<string | null>(null)
   const [chatHistory, setChatHistory] = useState<any[]>([])
   const [isRecording, setIsRecording] = useState(false)
+  const [apiError, setApiError] = useState(false);
   usePermissions();
   const { messages, inputText, setInputText, isSpeaking, flatListRef, handleSend,handleVoiceResult } = useChat();
   const { isListening, results, partialTranscript,error, startListening, stopListening,cancelListening } = useVoice()

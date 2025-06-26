@@ -11,7 +11,8 @@ import { scheduleReminderNotification } from '../utils/Notifications';
 
 const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
-export const useChat = () => {
+
+export const useChat = (onApiError?: () => void) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -111,7 +112,6 @@ export const useChat = () => {
       });
       return;
     }
-
     // Process with bot
     const botResponse = await processMessage(textToSend);
     let finalReply = botResponse.reply;
