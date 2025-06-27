@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: flask-chatbot
-    env: python
-    plan: free
-    buildCommand: ""
-    startCommand: "gunicorn main:app"
-    autoDeploy: true
