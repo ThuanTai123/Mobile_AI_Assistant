@@ -3,8 +3,8 @@ services:
     name: mobile-ai-assistant
     env: python
     branch: branch_TestDeploySV
-    buildCommand: "cd backend && pip install -r requirements.txt"
-    startCommand: "cd backend && gunicorn main:app"
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "gunicorn backend.main:app"
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
