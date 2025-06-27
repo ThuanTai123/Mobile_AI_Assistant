@@ -104,8 +104,36 @@ export const getBrightnessLevel = async (): Promise<number> => {
 };
 
 /**
- * Mở thanh điều hướng (chỉ có tác dụng gọi về màn hình chính nếu khả thi)
+ * Tăng độ sáng màn hình
+ */
+export const increaseBrightness = async () => {
+  try {
+    const current = await SystemSetting.getBrightness();
+    const next = Math.min(current + 0.1, 1);
+    await SystemSetting.setBrightness(next);
+    console.log('Tăng độ sáng lên:', next);
+  } catch (err) {
+    console.warn('Lỗi khi tăng độ sáng:', err);
+  }
+};
+
+/**
+ * Giảm độ sáng màn hình
+ */
+export const decreaseBrightness = async () => {
+  try {
+    const current = await SystemSetting.getBrightness();
+    const next = Math.max(current - 0.1, 0);
+    await SystemSetting.setBrightness(next);
+    console.log('Giảm độ sáng xuống:', next);
+  } catch (err) {
+    console.warn('Lỗi khi giảm độ sáng:', err);
+  }
+};
+
+/**
+ * Mở thanh điều hướng (placeholder)
  */
 export const openNavigationBar = () => {
-  Linking.openURL('home:'); // Android không hỗ trợ thực sự, dùng như placeholder
+  Linking.openURL('home:'); // Android không thực sự hỗ trợ, chỉ mô phỏng
 };
