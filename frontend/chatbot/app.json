@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Ruby_Assistant",
-    "slug": "Ruby_Assistant",
+    "slug": "my-chatbot-project",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",

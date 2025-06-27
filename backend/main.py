@@ -203,7 +203,7 @@ def chat_endpoint():
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": "openai/gpt-3.5-turbo",
+                "model": "mistralai/mistral-7b-instruct",
                 "messages": [
                     {
                         "role": "system",
@@ -361,6 +361,10 @@ def create_task():
     if remind_time:
         reply_text += f" lúc {remind_time}"
     return jsonify({'reply': reply_text}), 201
+
+@app.route("/", methods=["GET"])
+def index():
+    return "✅ Flask server is running!"
 
 @app.route('/task', methods=['GET'])
 def get_tasks():
