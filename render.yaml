@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: flask-chatbot
+    name: mobile-ai-assistant
     env: python
-    plan: free
-    rootDir: backend  # 👉 Chỉ định đúng thư mục chứa main.py và requirements.txt
-
-    buildCommand: pip install -r requirements.txt  # 👉 Vì requirements.txt nằm ngoài thư mục backend
-    startCommand: gunicorn main:app
-    autoDeploy: true
+    branch: branch_TestDeploySV
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && python main.py"
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
