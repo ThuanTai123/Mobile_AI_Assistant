@@ -2,5 +2,8 @@ services:
   - type: web
     name: mobile-assistant-backend
     env: python
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && gunicorn main:app
+
+    rootDir: backend  # <- Đây là dòng quan trọng
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
