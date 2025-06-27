@@ -1,4 +1,3 @@
-
 import db from '../screens/database';
 
 const log = console.log;
@@ -9,7 +8,7 @@ const runQuery = (
   params: any[] = [],
   onSuccess: (tx: any, results: any) => void = () => {},
   onError: (tx: any, err: any) => boolean = (tx, err) => {
-    error('❌ SQL Error:', err);
+    error('❌ Lỗi SQL:', err);
     return false;
   }
 ) => {
@@ -21,7 +20,7 @@ const runQuery = (
 export const createNoteTable = (): Promise<void> =>
   new Promise((resolve, reject) => {
     runQuery('DROP TABLE IF EXISTS notes;', [], () => {
-      log('✅ Dropped old notes table');
+      log('✅ Đã xoá bảng ghi chú cũ');
       runQuery(
         `CREATE TABLE notes (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,17 +30,17 @@ export const createNoteTable = (): Promise<void> =>
         );`,
         [],
         () => {
-          log('✅ Notes table created successfully');
+          log('✅ Tạo bảng ghi chú thành công');
           resolve();
         },
         (tx, err) => {
-          error('❌ Error creating notes table:', err);
+          error('❌ Lỗi khi tạo bảng ghi chú:', err);
           reject(err);
           return false;
         }
       );
     }, (tx, err) => {
-      error('❌ Error dropping notes table:', err);
+      error('❌ Lỗi khi xoá bảng ghi chú:', err);
       reject(err);
       return false;
     });
@@ -49,23 +48,25 @@ export const createNoteTable = (): Promise<void> =>
 
 export const saveNote = (title: string, content: string): Promise<void> =>
   new Promise((resolve, reject) => {
-    log('💾 Saving note:', { title, content });
+    log('💾 Đang lưu ghi chú:', { title, content });
 
     if (!title || !content) {
-      const err = new Error('Title and content are required');
-      error('❌ Validation failed:', err.message);
+      const err = new Error('Tiêu đề và nội dung là bắt buộc');
+      error('❌ Lỗi xác thực:', err.message);
       return reject(err);
     }
 
+    const createdAt = new Date().toISOString(); // Thời gian hiện tại
+
     runQuery(
-      'INSERT INTO notes (title, content) VALUES (?, ?);',
-      [title, content],
+      'INSERT INTO notes (title, content, created_at) VALUES (?, ?, ?);',
+      [title, content, createdAt],
       (tx, res) => {
-        log('✅ Note saved, insertId:', res.insertId);
+        log('✅ Đã lưu ghi chú, insertId:', res.insertId);
         resolve();
       },
       (tx, err) => {
-        error('❌ Error saving note:', err);
+        error('❌ Lỗi khi lưu ghi chú:', err);
         reject(err);
         return false;
       }
@@ -81,11 +82,11 @@ export const fetchNotes = (callback: (notes: any[]) => void) => {
       for (let i = 0; i < results.rows.length; i++) {
         data.push(results.rows.item(i));
       }
-      log('📝 Fetched notes:', data.length);
+      log('📝 Đã lấy ghi chú:', data.length);
       callback(data);
     },
     (tx, err) => {
-      error('❌ Error fetching notes:', err);
+      error('❌ Lỗi khi lấy ghi chú:', err);
       callback([]);
       return false;
     }
@@ -97,23 +98,23 @@ export const deleteNoteById = (id: number, callback: () => void) => {
     'DELETE FROM notes WHERE id = ?;',
     [id],
     () => {
-      log('✅ Note deleted:', id);
+      log('✅ Đã xoá ghi chú có ID:', id);
       callback();
     },
     (tx, err) => {
-      error('❌ Error deleting note:', err);
+      error('❌ Lỗi khi xoá ghi chú:', err);
       return false;
     }
   );
 };
 
 export const testDatabase = () => {
-  log('🧪 Testing database...');
+  log('🧪 Đang kiểm tra cơ sở dữ liệu...');
   runQuery(
     'PRAGMA table_info(notes);',
     [],
     (tx, res) => {
-      log('📋 Notes table structure:');
+      log('📋 Cấu trúc bảng ghi chú:');
       for (let i = 0; i < res.rows.length; i++) {
         const col = res.rows.item(i);
         log(`  - ${col.name}: ${col.type}`);
@@ -121,33 +122,32 @@ export const testDatabase = () => {
       testInsert();
     },
     (tx, err) => {
-      error('❌ Error checking structure:', err);
+      error('❌ Lỗi khi kiểm tra cấu trúc:', err);
       return false;
     }
   );
 };
 
 const testInsert = () => {
-  const title = 'Test Note ' + Date.now();
-  const content = 'This is a test note content';
+  const title = 'Ghi chú kiểm thử ' + Date.now();
+  const content = 'Đây là nội dung ghi chú kiểm thử';
 
-  log('🧪 Testing insert:', { title, content });
+  log('🧪 Đang thử thêm mới:', { title, content });
 
   saveNote(title, content)
     .then(() => {
-      log('✅ Test insert successful');
+      log('✅ Thêm mới kiểm thử thành công');
       fetchNotes(notes => {
-        log('✅ Test fetch successful, found', notes.length, 'notes');
+        log('✅ Lấy ghi chú kiểm thử thành công, tìm thấy', notes.length, 'ghi chú');
         const last = notes[0];
-        if (last?.title?.includes('Test Note')) {
+        if (last?.title?.includes('Ghi chú kiểm thử')) {
           deleteNoteById(last.id, () => {
-            log('✅ Test cleanup completed');
+            log('✅ Dọn dẹp kiểm thử hoàn tất');
           });
         }
       });
     })
     .catch(err => {
-      error('❌ Test insert failed:', err);
+      error('❌ Thêm mới kiểm thử thất bại:', err);
     });
 };
-

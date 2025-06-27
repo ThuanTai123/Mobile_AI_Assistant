@@ -4,6 +4,7 @@ import { handleDeviceCommand } from "../utils/DeviceCommandHandler"
 import { getApiUrl } from '../services/apiConfig';
 
 // ⚠️ Đổi IP nội bộ nếu cần
+
 const API_URL = "http://192.168.30.30:5000"
 
 export interface BotResponse {
