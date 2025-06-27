@@ -3,6 +3,8 @@ services:
     name: flask-chatbot
     env: python
     plan: free
-    buildCommand: ""
+    rootDir: backend  # 👉 Chỉ định đúng thư mục chứa main.py và requirements.txt
+
+    buildCommand: pip install -r ../requirements.txt  # 👉 Vì requirements.txt nằm ngoài thư mục backend
     startCommand: "cd backend && gunicorn main:app"
     autoDeploy: true
