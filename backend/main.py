@@ -220,6 +220,7 @@ def chat_endpoint():
             response.raise_for_status()
             data = response.json()
             reply = data["choices"][0]["message"]["content"]
+            print(">> 🤖 Phản hồi OpenRouter:", reply)
 
         # Chuyển văn bản thành giọng nói
         tts = gTTS(text=reply, lang="vi", tld="com.vn")
@@ -456,5 +457,4 @@ def check_appointments():
 # Khởi động thread nền
 threading.Thread(target=check_appointments, daemon=True).start()
 
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+
