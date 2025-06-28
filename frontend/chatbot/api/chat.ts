@@ -5,7 +5,7 @@ import { getApiUrl } from '../services/apiConfig';
 
 // ⚠️ Đổi IP nội bộ nếu cần
 
-const API_URL = "http://192.168.30.30:5000"
+const API_URL = "https://mobile-ai-assistant.onrender.com"
 
 export interface BotResponse {
   reply: string
