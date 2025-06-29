@@ -8,9 +8,10 @@ import { saveNote } from '../services/NoteService';
 import { handleDeviceCommand } from '../utils/DeviceCommandHandler';
 import { checkAndOpenApp } from '../utils/AppLauncher';
 import { scheduleReminderNotification } from '../utils/Notifications';
+// ✅ FIX: Import TimeParser
+import { parseTimeFromMessage } from '../utils/TimeParser';
 
 const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
-
 
 export const useChat = (onApiError?: () => void) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,29 +24,34 @@ export const useChat = (onApiError?: () => void) => {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
+  // ✅ UPDATED: Enhanced note extraction with time parsing
   const extractNoteFromMessage = (originalMessage: string, botReply: string): string => {
     let content = originalMessage.toLowerCase();
     
     if (content.includes("tạo ghi chú")) {
       content = content.replace("tạo ghi chú", "").trim();
     }
-
+    
+    // Remove time patterns to get clean content
+    content = content.replace(/lúc\s+\d{1,2}h\d{0,2}/g, '').trim();
+    content = content.replace(/\d{1,2}:\d{2}/g, '').trim();
+    content = content.replace(/\d{1,2}\s*giờ(?:\s*\d{1,2}(?:\s*phút)?)?/g, '').trim();
+    content = content.replace(/(ngày\s+mai|mai|hôm\s+nay)/g, '').trim();
+    content = content.replace(/\d{1,2}(?::(\d{2}))?\s*(am|pm)/gi, '').trim();
+    
     if (!content && botReply) {
       const match = botReply.match(/'([^']+)'/);
       if (match) {
         content = match[1];
       }
     }
-
+    
     return content || "Ghi chú không có tiêu đề";
   };
 
-  // ✅ THÊM: Hàm xử lý kết quả voice
   const handleVoiceResult = (text: string) => {
     console.log("📤 Voice result received:", text);
     setInputText(text);
-    // Có thể tự động gửi hoặc để user xác nhận
-    // handleSend(text);
   };
 
   const handleSend = async (overrideText?: string) => {
@@ -54,6 +60,10 @@ export const useChat = (onApiError?: () => void) => {
     if (!textToSend) return;
 
     console.log("🔍 Processing message:", textToSend);
+
+    // ✅ FIX: Parse time IMMEDIATELY when message is sent
+    const timeInfo = parseTimeFromMessage(textToSend);
+    console.log("🕐 [useChat] Time info parsed:", timeInfo);
 
     const userMessage: Message = {
       id: generateId(),
@@ -73,108 +83,178 @@ export const useChat = (onApiError?: () => void) => {
       console.error("❌ Error saving user message:", error);
     }
 
-    // Check for app opening
-    const { opened, appName } = await checkAndOpenApp(textToSend);
-    if (opened) {
-      const appResponse = `Đã mở ứng dụng ${appName} cho bạn.`;
-      const botMessage: Message = {
-        id: generateId(),
-        text: appResponse,
-        sender: "bot",
-      };
-      setMessages((prev) => [...prev, botMessage]);
-      await saveMessage(appResponse, "bot");
-      return;
-    }
+    try {
+      // Check for app opening
+      const { opened, appName } = await checkAndOpenApp(textToSend);
+      if (opened) {
+        const appResponse = `Đã mở ứng dụng ${appName} cho bạn.`;
+        const botMessage: Message = {
+          id: generateId(),
+          text: appResponse,
+          sender: "bot",
+        };
+        setMessages((prev) => [...prev, botMessage]);
+        await saveMessage(appResponse, "bot");
+        return;
+      }
 
-    // Check for device commands
-    const deviceResponse = await handleDeviceCommand(textToSend);
-    if (deviceResponse) {
+      // Check for device commands
+      const deviceResponse = await handleDeviceCommand(textToSend);
+      if (deviceResponse) {
+        const botMessage: Message = {
+          id: generateId(),
+          text: deviceResponse,
+          sender: "bot",
+        };
+        setMessages((prev) => [...prev, botMessage]);
+        await saveMessage(deviceResponse, "bot");
+        
+        setIsSpeaking(true);
+        Speech.speak(deviceResponse, {
+          language: "vi-VN",
+          pitch: 1,
+          rate: 1,
+          onDone: () => {
+            setIsSpeaking(false);
+            setIsRecording(false);
+          },
+          onStopped: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+        });
+        return;
+      }
+
+      console.log("🌐 Calling processMessage API...");
+      const botResponse = await processMessage(textToSend);
+      console.log("✅ API response received:", botResponse);
+
+      let finalReply = botResponse?.reply || "";
+      let responseType = botResponse?.type || "";
+
+      // Check if this should be treated as a note
+      const isNoteMessage = textToSend.toLowerCase().includes('ghi chú') || 
+                           textToSend.toLowerCase().includes('nhắc') ||
+                           timeInfo.isValid;
+
+      console.log("📝 [useChat] Is note message:", isNoteMessage);
+
+      // Handle different response types
+      if (!finalReply && (botResponse as any)?.content) {
+        finalReply = `Đã tạo ghi chú "${(botResponse as any).content}" thành công!`;
+        responseType = "note_created";
+      }
+
+      if (!finalReply) {
+        finalReply = "Đã xử lý yêu cầu của bạn.";
+      }
+
+      // ✅ FIX: Schedule notification BEFORE saving note
+      if (timeInfo.isValid) {
+        const reminderDateTime = new Date(`${timeInfo.date}T${timeInfo.time}:00`);
+        const now = new Date();
+        const delayMs = reminderDateTime.getTime() - now.getTime();
+        
+        console.log(`⏰ [useChat] Reminder details:`);
+        console.log(`   - Current time: ${now.toLocaleString('vi-VN')}`);
+        console.log(`   - Reminder time: ${reminderDateTime.toLocaleString('vi-VN')}`);
+        console.log(`   - Delay (ms): ${delayMs}`);
+        console.log(`   - Delay (seconds): ${Math.floor(delayMs / 1000)}`);
+        
+        if (delayMs > 0) {
+          const delaySeconds = Math.floor(delayMs / 1000);
+          const noteContent = extractNoteFromMessage(textToSend, finalReply);
+          
+          console.log(`📢 [useChat] Scheduling notification for: "${noteContent}"`);
+          
+          try {
+            const notificationId = await scheduleReminderNotification(
+              delaySeconds, 
+              `Nhắc nhở: ${noteContent}`
+            );
+            console.log(`✅ [useChat] Notification scheduled with ID: ${notificationId}`);
+            
+            // Update reply to include reminder info
+            const timeText = `lúc ${timeInfo.time}`;
+            const dateText = timeInfo.date === new Date().toISOString().split('T')[0] 
+              ? 'hôm nay' 
+              : 'ngày ' + new Date(timeInfo.date).toLocaleDateString('vi-VN');
+            
+            finalReply += ` Tôi sẽ nhắc bạn ${timeText} ${dateText}.`;
+            
+          } catch (error) {
+            console.error(`❌ [useChat] Failed to schedule notification:`, error);
+          }
+        } else {
+          console.log(`⚠️ [useChat] Reminder time is in the past, not scheduling`);
+        }
+      }
+
       const botMessage: Message = {
         id: generateId(),
-        text: deviceResponse,
+        text: finalReply,
         sender: "bot",
       };
+
       setMessages((prev) => [...prev, botMessage]);
-      await saveMessage(deviceResponse, "bot");
+      scrollToBottom();
+      await saveMessage(finalReply, "bot");
+
+      // ✅ FIX: Save note with parsed time info
+      if (responseType === "note_created" || isNoteMessage) {
+        const noteContent = extractNoteFromMessage(textToSend, finalReply);
+        
+        console.log(`💾 [useChat] Saving note: "${noteContent}"`);
+        console.log(`💾 [useChat] With time: ${timeInfo.time}, date: ${timeInfo.date}`);
+        
+        if (noteContent) {
+          try {
+            const noteId = await saveNote(
+              "Ghi chú", 
+              noteContent,
+              timeInfo.isValid ? timeInfo.time : undefined,
+              timeInfo.isValid ? timeInfo.date : undefined
+            );
+            
+            console.log("✅ [useChat] Note saved successfully with ID:", noteId);
+            
+          } catch (error) {
+            console.error("❌ [useChat] Error saving note:", error);
+          }
+        }
+      }
+
+      // Text to speech
+      if (finalReply) {
+        setIsSpeaking(true);
+        Speech.speak(finalReply, {
+          language: "vi-VN",
+          pitch: 1,
+          rate: 1,
+          onDone: () => {
+            setIsSpeaking(false);
+            setIsRecording(false);
+          },
+          onStopped: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+        });
+      }
+
+    } catch (error) {
+      console.error("❌ Lỗi xử lý message:", error);
       
-      setIsSpeaking(true);
-      Speech.speak(deviceResponse, {
-        language: "vi-VN",
-        pitch: 1,
-        rate: 1,
-        onDone: () => {
-          setIsSpeaking(false);
-          setIsRecording(false);
-        },
-        onStopped: () => setIsSpeaking(false),
-        onError: () => setIsSpeaking(false),
-      });
-      return;
-    }
-    // Process with bot
-    const botResponse = await processMessage(textToSend);
-    let finalReply = botResponse.reply;
-    let responseType = botResponse.type;
-
-    if (!finalReply && (botResponse as any).content) {
-      finalReply = `Đã tạo ghi chú "${(botResponse as any).content}" thành công!`;
-      responseType = "note_created";
-    }
-
-    if (!finalReply) {
-      finalReply = "Đã xử lý yêu cầu của bạn.";
-    }
-
-    // Handle reminders
-    const isReminder = /đã tạo nhắc/i.test(finalReply);
-    if (isReminder) {
-      const match = textToSend.match(/(\d+)\s*(giây|giay|seconds?)/i);
-      if (match) {
-        const delaySeconds = Number.parseInt(match[1]);
-        if (!isNaN(delaySeconds)) {
-          await scheduleReminderNotification(delaySeconds, textToSend);
-        }
+      const errorMessage = "Xin lỗi, tôi gặp sự cố khi xử lý tin nhắn của bạn. Vui lòng thử lại.";
+      const errorBotMessage: Message = {
+        id: generateId(),
+        text: errorMessage,
+        sender: "bot",
+      };
+      
+      setMessages((prev) => [...prev, errorBotMessage]);
+      scrollToBottom();
+      
+      if (onApiError) {
+        onApiError();
       }
-    }
-
-    const botMessage: Message = {
-      id: generateId(),
-      text: finalReply,
-      sender: "bot",
-    };
-
-    setMessages((prev) => [...prev, botMessage]);
-    scrollToBottom();
-    await saveMessage(finalReply, "bot");
-
-    // Handle note creation
-    if (responseType === "note_created") {
-      const noteContent = extractNoteFromMessage(textToSend, finalReply);
-      if (noteContent) {
-        try {
-          await saveNote("Ghi chú", noteContent);
-          console.log("✅ Note saved successfully");
-        } catch (error) {
-          console.error("❌ Error saving note:", error);
-        }
-      }
-    }
-
-    // Text to speech
-    if (!isReminder && finalReply) {
-      setIsSpeaking(true);
-      Speech.speak(finalReply, {
-        language: "vi-VN",
-        pitch: 1,
-        rate: 1,
-        onDone: () => {
-          setIsSpeaking(false);
-          setIsRecording(false);
-        },
-        onStopped: () => setIsSpeaking(false),
-        onError: () => setIsSpeaking(false),
-      });
     }
   };
 
@@ -187,7 +267,7 @@ export const useChat = (onApiError?: () => void) => {
     setIsRecording,
     flatListRef,
     handleSend,
-    handleVoiceResult, // ✅ THÊM: Export hàm này
+    handleVoiceResult,
     scrollToBottom,
   };
 };
