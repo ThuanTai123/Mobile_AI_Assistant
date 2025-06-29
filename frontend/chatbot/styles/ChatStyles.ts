@@ -11,6 +11,72 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  reminderBadge: {
+  position: 'absolute',
+  right: 20,
+  top: 10,
+  backgroundColor: '#FF6B6B',
+  borderRadius: 12,
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  minWidth: 24,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+// Thêm vào ChatStyles.js
+sectionHeader: {
+  paddingVertical: 10,
+  paddingHorizontal: 15,
+  backgroundColor: '#f8f9fa',
+  borderBottomWidth: 1,
+  borderBottomColor: '#e9ecef',
+},
+sectionTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#495057',
+},
+headerButtons: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+noteTitleContainer: {
+  flex: 1,
+},
+reminderTime: {
+  fontSize: 12,
+  color: '#007bff',
+  fontWeight: '600',
+  marginTop: 2,
+},
+overdueTime: {
+  color: '#dc3545',
+},
+overdueNote: {
+  borderLeftWidth: 4,
+  borderLeftColor: '#dc3545',
+},
+noteActions: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+completeButton: {
+  padding: 5,
+  marginRight: 5,
+},
+completedNote: {
+  opacity: 0.6,
+  backgroundColor: '#f8f9fa',
+},
+completedText: {
+  textDecorationLine: 'line-through',
+  color: '#6c757d',
+},
+reminderBadgeText: {
+  color: 'white',
+  fontSize: 12,
+  fontWeight: 'bold',
+},
   modalContainer: {
     backgroundColor: "#fff",
     borderRadius: 20,
