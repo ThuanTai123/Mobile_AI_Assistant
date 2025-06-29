@@ -1,13 +1,11 @@
 import axios from "axios"
 import { getCurrentCity } from "../screens/location"
 import { handleDeviceCommand } from "../utils/DeviceCommandHandler"
-import { getApiUrl } from '../services/apiConfig';
 
-// ⚠️ Đổi IP nội bộ nếu cần
-
-const API_URL = "https://mobile-ai-assistant.onrender.com"
+const API_URL = "http://192.168.1.88:5000"
 
 export interface BotResponse {
+  [x: string]: any
   reply: string
   type?: string
   note_data?: {
@@ -20,62 +18,140 @@ export interface BotResponse {
 }
 
 export const processMessage = async (message: string): Promise<BotResponse> => {
-  // 1. Thiết bị
+  console.log("🌐 API Call starting for message:", message);
+  
   const deviceReply = await handleDeviceCommand(message)
   if (deviceReply) return { reply: deviceReply }
 
-  // 2. Regex phân loại lệnh
   const isWeatherQuery = /thời tiết|trời/.test(message.toLowerCase())
   const isNote = /ghi chú/.test(message.toLowerCase())
   const isTask = /nhắc việc|nhắc tôi/.test(message.toLowerCase())
   const isAppointment = /lịch hẹn|hẹn gặp|đặt lịch/.test(message.toLowerCase())
 
   try {
+    let endpoint = '';
+    let payload = {};
+
     if (isWeatherQuery) {
+      endpoint = '/weather';
       const city = await getCurrentCity()
-      const res = await axios.post<BotResponse>(`${API_URL}/weather`, { message })
-      return res.data
+      payload = { message, city };
+    } else if (isNote) {
+      endpoint = '/note';
+      payload = { content: message };
+    } else if (isTask) {
+      endpoint = '/task';
+      payload = { task: message };
+    } else if (isAppointment) {
+      endpoint = '/appointment';
+      payload = { text: message };
+    } else {
+      endpoint = '/chat';
+      payload = { message };
     }
 
-    if (isNote) {
-      const res = await axios.post<BotResponse>(`${API_URL}/note`, { content: message })
+    console.log(`🌐 Calling: ${API_URL}${endpoint}`);
 
-      // ✅ THÊM: Kiểm tra và xử lý response không đúng format
+    const res = await axios.post<BotResponse>(`${API_URL}${endpoint}`, payload, {
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log("✅ API Response received:", res.status, res.data);
+
+    // ✅ NEW: Handle server errors that still return a response
+    if (res.data.error) {
+      console.warn("⚠️ Server returned error but with response:", res.data.error);
+      
+      // If server provides a reply despite the error, use it
       if (res.data.reply) {
-        // Server trả về đúng format
-        return res.data
+        return { reply: res.data.reply };
+      }
+      
+      // Otherwise provide a fallback
+      return { reply: "Xin lỗi, tôi gặp một chút sự cố. Hãy thử lại nhé!" };
+    }
+
+    // Handle note creation response
+    if (isNote) {
+      if (res.data.reply) {
+        return res.data;
       } else if ((res.data as any).content || (res.data as any).id) {
-        // Server trả về raw record, tự tạo response
-        console.warn("⚠️ Server returned raw record, formatting response")
         return {
           reply: `Đã tạo ghi chú thành công!`,
           type: "note_created",
-        }
+        };
       } else {
-        // Fallback
         return {
           reply: "Đã xử lý yêu cầu tạo ghi chú.",
           type: "note_created",
-        }
+        };
       }
     }
 
-    if (isTask) {
-      const res = await axios.post<BotResponse>(`${API_URL}/task`, { task: message })
-      return res.data
-    }
+    return res.data;
 
-    if (isAppointment) {
-      const res = await axios.post<BotResponse>(`${API_URL}/appointment`, { text: message })
-      return res.data
-    }
-
-    // Mặc định: gọi chatbot
-    const res = await axios.post<BotResponse>(`${API_URL}/chat`, { message })
-    return res.data
   } catch (error: any) {
-    console.error("Lỗi xử lý message:", error.message)
-    throw new Error('❌ Lỗi xử lý message: ' + (error?.response?.data?.error || error?.message));
-    return { reply: "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau." }
+    console.error("❌ API Error Details:");
+    console.error("- Error message:", error.message);
+    
+    if (error.response) {
+      console.error("- Response status:", error.response.status);
+      console.error("- Response data:", error.response.data);
+      
+      // ✅ NEW: Handle TTS rate limit specifically
+      if (error.response.status === 500 && 
+          error.response.data?.error?.includes("429") && 
+          error.response.data?.error?.includes("TTS")) {
+        
+        console.warn("🎤 TTS API rate limited, but continuing with text response");
+        
+        // If server provides a reply despite TTS failure, use it
+        if (error.response.data?.reply) {
+          return { reply: error.response.data.reply };
+        }
+        
+        // Provide a generic response for the user's message
+        return { 
+          reply: getGenericResponse(message)
+        };
+      }
+      
+      // Handle other server errors
+      if (error.response.status === 500) {
+        return { 
+          reply: "Máy chủ đang gặp sự cố. Vui lòng thử lại sau ít phút." 
+        };
+      }
+    } else if (error.request) {
+      return { 
+        reply: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng." 
+      };
+    }
+
+    return { 
+      reply: "Đã xảy ra lỗi không xác định. Vui lòng thử lại sau." 
+    };
   }
+}
+
+// ✅ NEW: Helper function for generic responses
+const getGenericResponse = (message: string): string => {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes("xin chào") || lowerMessage.includes("hello")) {
+    return "Xin chào! Tôi là Ruby Assistant. Tôi có thể giúp gì cho bạn?";
+  }
+  
+  if (lowerMessage.includes("cảm ơn")) {
+    return "Không có gì! Tôi luôn sẵn sàng giúp đỡ bạn.";
+  }
+  
+  if (lowerMessage.includes("tạm biệt") || lowerMessage.includes("bye")) {
+    return "Tạm biệt! Hẹn gặp lại bạn sau nhé!";
+  }
+  
+  return "Tôi hiểu bạn đang nói gì, nhưng hiện tại tôi gặp một chút sự cố kỹ thuật. Hãy thử lại sau nhé!";
 }
