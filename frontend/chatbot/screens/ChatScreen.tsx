@@ -11,7 +11,6 @@ import {
   Platform,
   Alert,
 } from "react-native";
-
 import styles from "../styles/ChatStyles";
 import useVoice from "../hooks/useVoice";
 import { getCurrentCity } from "./location";
@@ -25,6 +24,8 @@ import {
   fetchNotes,
   saveNote,
   deleteNoteById,
+  markNoteCompleted,
+  getUpcomingReminders,
 } from "../services/NoteService";
 import {
   deleteAllChatHistory,
@@ -37,7 +38,12 @@ import { NotesModal } from "../components/modals/NoteModals";
 import { ChatInput } from "../components/ChatInput";
 import { usePermissions } from "../hooks/usePermission";
 import { useChat } from "../hooks/useChat";
-
+import {
+  setupNotificationChannel,
+  setupNotificationHandler,
+  requestNotificationPermission,
+} from "../utils/Notifications";
+import * as Notifications from 'expo-notifications';
 
 interface Message {
   id: number;
@@ -45,14 +51,13 @@ interface Message {
   sender: "user" | "bot";
 }
 
-const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
-
 const ChatScreen = () => {
   const [notes, setNotes] = useState<any[]>([]);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [notesVisible, setNotesVisible] = useState(false);
   const [currentCity, setCurrentCity] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [upcomingReminders, setUpcomingReminders] = useState<any[]>([]);
 
   usePermissions();
 
@@ -86,18 +91,6 @@ const ChatScreen = () => {
     if (error) console.error("🎤 Voice error:", error);
   }, [error]);
 
-  const extractNoteFromMessage = (originalMessage: string, botReply: string): string => {
-    let content = originalMessage.toLowerCase();
-    if (content.includes("tạo ghi chú")) {
-      content = content.replace("tạo ghi chú", "").trim();
-    }
-    if (!content && botReply) {
-      const match = botReply.match(/'([^']+)'/);
-      if (match) content = match[1];
-    }
-    return content || "Ghi chú không có tiêu đề";
-  };
-
   const loadChatHistory = () => {
     fetchChatHistory((history: any[]) => {
       setChatHistory(history);
@@ -110,6 +103,32 @@ const ChatScreen = () => {
     });
   };
 
+  const loadUpcomingReminders = () => {
+    getUpcomingReminders((reminders: any[]) => {
+      setUpcomingReminders(reminders);
+    });
+  };
+
+  const handleMarkCompleted = (noteId: number, noteTitle: string) => {
+    Alert.alert(
+      "Hoàn thành", 
+      `Đánh dấu "${noteTitle}" đã hoàn thành?`, 
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Hoàn thành",
+          style: "default",
+          onPress: () => {
+            markNoteCompleted(noteId, () => {
+              loadNotes();
+              loadUpcomingReminders();
+            });
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteNote = (noteId: number, noteTitle: string) => {
     Alert.alert("Xác nhận xoá", `Bạn có chắc chắn muốn xoá ghi chú "${noteTitle}" không?`, [
       { text: "Huỷ", style: "cancel" },
@@ -119,6 +138,7 @@ const ChatScreen = () => {
         onPress: () => {
           deleteNoteById(noteId, () => {
             loadNotes();
+            loadUpcomingReminders();
           });
         },
       },
@@ -134,6 +154,7 @@ const ChatScreen = () => {
         onPress: () => {
           deleteAllNotes();
           setNotes([]);
+          setUpcomingReminders([]);
         },
       },
     ]);
@@ -153,6 +174,29 @@ const ChatScreen = () => {
     ]);
   };
 
+  // Setup notifications
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        await requestNotificationPermission();
+        await setupNotificationChannel();
+        setupNotificationHandler();
+      } catch (error) {
+        console.error('❌ Error setting up notifications:', error);
+      }
+    };
+    setupNotifications();
+  }, []);
+
+  // Handle notification responses
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('📱 Notification tapped');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Initialize app
   useEffect(() => {
     const init = async () => {
       await checkTables();
@@ -160,6 +204,7 @@ const ChatScreen = () => {
       await createNoteTable();
       loadChatHistory();
       loadNotes();
+      loadUpcomingReminders();
     };
     init();
   }, []);
@@ -250,6 +295,8 @@ const ChatScreen = () => {
         notes={notes}
         onDeleteAll={handleDeleteNotes}
         onDeleteNote={handleDeleteNote}
+        onMarkCompleted={handleMarkCompleted}
+        upcomingReminders={upcomingReminders}
       />
     </SafeAreaView>
   );
