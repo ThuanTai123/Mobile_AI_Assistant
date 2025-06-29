@@ -17,38 +17,70 @@ const runQuery = (
   });
 };
 
+// ✅ UPDATED: Thêm cột reminder_time và reminder_date
 export const createNoteTable = (): Promise<void> =>
   new Promise((resolve, reject) => {
-    runQuery('DROP TABLE IF EXISTS notes;', [], () => {
-      log('✅ Đã xoá bảng ghi chú cũ');
-      runQuery(
-        `CREATE TABLE notes (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT,
-          content TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );`,
-        [],
-        () => {
-          log('✅ Tạo bảng ghi chú thành công');
-          resolve();
-        },
-        (tx, err) => {
-          error('❌ Lỗi khi tạo bảng ghi chú:', err);
-          reject(err);
-          return false;
-        }
-      );
-    }, (tx, err) => {
-      error('❌ Lỗi khi xoá bảng ghi chú:', err);
-      reject(err);
-      return false;
-    });
+    runQuery(
+      `CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        reminder_time TEXT,
+        reminder_date TEXT,
+        is_completed INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );`,
+      [],
+      () => {
+        log('✅ Bảng ghi chú đã sẵn sàng');
+        // Check if we need to add new columns to existing table
+        addMissingColumns();
+        resolve();
+      },
+      (tx, err) => {
+        error('❌ Lỗi khi tạo bảng ghi chú:', err);
+        reject(err);
+        return false;
+      }
+    );
   });
 
-export const saveNote = (title: string, content: string): Promise<void> =>
+// ✅ NEW: Thêm cột mới nếu bảng đã tồn tại
+const addMissingColumns = () => {
+  // Add reminder_time column if it doesn't exist
+  runQuery(
+    `ALTER TABLE notes ADD COLUMN reminder_time TEXT;`,
+    [],
+    () => log('✅ Đã thêm cột reminder_time'),
+    () => true // Ignore error if column already exists
+  );
+  
+  // Add reminder_date column if it doesn't exist
+  runQuery(
+    `ALTER TABLE notes ADD COLUMN reminder_date TEXT;`,
+    [],
+    () => log('✅ Đã thêm cột reminder_date'),
+    () => true // Ignore error if column already exists
+  );
+  
+  // Add is_completed column if it doesn't exist
+  runQuery(
+    `ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0;`,
+    [],
+    () => log('✅ Đã thêm cột is_completed'),
+    () => true // Ignore error if column already exists
+  );
+};
+
+// ✅ UPDATED: Lưu ghi chú với thời gian hẹn
+export const saveNote = (
+  title: string, 
+  content: string, 
+  reminderTime?: string, 
+  reminderDate?: string
+): Promise<number> =>
   new Promise((resolve, reject) => {
-    log('💾 Đang lưu ghi chú:', { title, content });
+    log('💾 Đang lưu ghi chú:', { title, content, reminderTime, reminderDate });
 
     if (!title || !content) {
       const err = new Error('Tiêu đề và nội dung là bắt buộc');
@@ -56,14 +88,14 @@ export const saveNote = (title: string, content: string): Promise<void> =>
       return reject(err);
     }
 
-    const createdAt = new Date().toISOString(); // Thời gian hiện tại
+    const createdAt = new Date().toISOString();
 
     runQuery(
-      'INSERT INTO notes (title, content, created_at) VALUES (?, ?, ?);',
-      [title, content, createdAt],
+      'INSERT INTO notes (title, content, reminder_time, reminder_date, created_at) VALUES (?, ?, ?, ?, ?);',
+      [title, content, reminderTime || null, reminderDate || null, createdAt],
       (tx, res) => {
         log('✅ Đã lưu ghi chú, insertId:', res.insertId);
-        resolve();
+        resolve(res.insertId);
       },
       (tx, err) => {
         error('❌ Lỗi khi lưu ghi chú:', err);
@@ -73,6 +105,7 @@ export const saveNote = (title: string, content: string): Promise<void> =>
     );
   });
 
+// ✅ UPDATED: Lấy ghi chú với thông tin thời gian
 export const fetchNotes = (callback: (notes: any[]) => void) => {
   runQuery(
     'SELECT * FROM notes ORDER BY created_at DESC;',
@@ -80,7 +113,15 @@ export const fetchNotes = (callback: (notes: any[]) => void) => {
     (tx, results) => {
       const data = [];
       for (let i = 0; i < results.rows.length; i++) {
-        data.push(results.rows.item(i));
+        const note = results.rows.item(i);
+        // Format reminder info
+        if (note.reminder_time || note.reminder_date) {
+          note.hasReminder = true;
+          note.reminderText = formatReminderText(note.reminder_time, note.reminder_date);
+        } else {
+          note.hasReminder = false;
+        }
+        data.push(note);
       }
       log('📝 Đã lấy ghi chú:', data.length);
       callback(data);
@@ -93,6 +134,77 @@ export const fetchNotes = (callback: (notes: any[]) => void) => {
   );
 };
 
+// ✅ NEW: Lấy ghi chú có nhắc nhở sắp tới
+export const getUpcomingReminders = (callback: (notes: any[]) => void) => {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  runQuery(
+    `SELECT * FROM notes 
+     WHERE (reminder_date = ? OR reminder_date IS NULL) 
+     AND reminder_time IS NOT NULL 
+     AND is_completed = 0
+     ORDER BY reminder_time ASC;`,
+    [today],
+    (tx, results) => {
+      const data = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        data.push(results.rows.item(i));
+      }
+      log('⏰ Đã lấy nhắc nhở sắp tới:', data.length);
+      callback(data);
+    },
+    (tx, err) => {
+      error('❌ Lỗi khi lấy nhắc nhở:', err);
+      callback([]);
+      return false;
+    }
+  );
+};
+
+// ✅ NEW: Đánh dấu ghi chú đã hoàn thành
+export const markNoteCompleted = (id: number, callback?: () => void) => {
+  runQuery(
+    'UPDATE notes SET is_completed = 1 WHERE id = ?;',
+    [id],
+    () => {
+      log('✅ Đã đánh dấu hoàn thành ghi chú ID:', id);
+      if (callback) callback();
+    },
+    (tx, err) => {
+      error('❌ Lỗi khi đánh dấu hoàn thành:', err);
+      return false;
+    }
+  );
+};
+
+// ✅ NEW: Hàm format thời gian nhắc nhở
+const formatReminderText = (time?: string, date?: string): string => {
+  if (!time) return '';
+  
+  let result = `⏰ ${time}`;
+  if (date && date !== new Date().toISOString().split('T')[0]) {
+    result += ` (${formatDate(date)})`;
+  }
+  return result;
+};
+
+// ✅ NEW: Format ngày tháng
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  if (dateString === today.toISOString().split('T')[0]) {
+    return 'Hôm nay';
+  } else if (dateString === tomorrow.toISOString().split('T')[0]) {
+    return 'Ngày mai';
+  } else {
+    return date.toLocaleDateString('vi-VN');
+  }
+};
+
+// Các hàm khác giữ nguyên...
 export const deleteNoteById = (id: number, callback: () => void) => {
   runQuery(
     'DELETE FROM notes WHERE id = ?;',
@@ -108,46 +220,17 @@ export const deleteNoteById = (id: number, callback: () => void) => {
   );
 };
 
-export const testDatabase = () => {
-  log('🧪 Đang kiểm tra cơ sở dữ liệu...');
+export const deleteAllNotes = (callback?: () => void) => {
   runQuery(
-    'PRAGMA table_info(notes);',
+    'DELETE FROM notes;',
     [],
-    (tx, res) => {
-      log('📋 Cấu trúc bảng ghi chú:');
-      for (let i = 0; i < res.rows.length; i++) {
-        const col = res.rows.item(i);
-        log(`  - ${col.name}: ${col.type}`);
-      }
-      testInsert();
+    () => {
+      log('✅ Đã xoá tất cả ghi chú');
+      if (callback) callback();
     },
     (tx, err) => {
-      error('❌ Lỗi khi kiểm tra cấu trúc:', err);
+      error('❌ Lỗi khi xoá tất cả ghi chú:', err);
       return false;
     }
   );
-};
-
-const testInsert = () => {
-  const title = 'Ghi chú kiểm thử ' + Date.now();
-  const content = 'Đây là nội dung ghi chú kiểm thử';
-
-  log('🧪 Đang thử thêm mới:', { title, content });
-
-  saveNote(title, content)
-    .then(() => {
-      log('✅ Thêm mới kiểm thử thành công');
-      fetchNotes(notes => {
-        log('✅ Lấy ghi chú kiểm thử thành công, tìm thấy', notes.length, 'ghi chú');
-        const last = notes[0];
-        if (last?.title?.includes('Ghi chú kiểm thử')) {
-          deleteNoteById(last.id, () => {
-            log('✅ Dọn dẹp kiểm thử hoàn tất');
-          });
-        }
-      });
-    })
-    .catch(err => {
-      error('❌ Thêm mới kiểm thử thất bại:', err);
-    });
 };
