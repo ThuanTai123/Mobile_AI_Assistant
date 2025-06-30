@@ -39,12 +39,23 @@ export const openAppByName = async (appName: string): Promise<boolean> => {
   }
 };
 
-export const checkAndOpenApp = async (text: string): Promise<{ opened: boolean; appName?: string }> => {
+export const checkAndOpenApp = async (
+  text: string
+): Promise<{ opened: boolean; appName?: string }> => {
   const trimmedText = text.trim().toLowerCase();
+
   if (trimmedText.startsWith('mở ')) {
     const appName = trimmedText.slice(3).trim();
-    const opened = await openAppByName(appName);
-    return { opened, appName };
+
+    // So khớp tên app theo danh sách hỗ trợ
+    const supportedApps = Object.keys(appSchemes); // ["youtube", "facebook", ...]
+    for (const key of supportedApps) {
+      if (appName === key || appName.includes(key)) {
+        const opened = await openAppByName(key);
+        return { opened, appName: key };
+      }
+    }
   }
+
   return { opened: false };
 };

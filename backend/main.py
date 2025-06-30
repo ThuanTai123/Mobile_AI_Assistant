@@ -1,4 +1,5 @@
 import os
+print("✅ APP STARTING on Render...")
 import re
 import sqlite3
 import uuid
@@ -13,9 +14,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 from gtts import gTTS
-from handle_device_command import handle_device_command  # Bạn cần có file này
-from city_utils import CITY_MAP, extract_city  # Bạn cần có file này
-from time_utils import extract_forecast_date, parse_reminder  # Bạn cần có file này
+from handle_device_command import handle_device_command 
+from city_utils import CITY_MAP, extract_city  
+from time_utils import extract_forecast_date, parse_reminder 
 
 # Load API key từ .env
 load_dotenv()
@@ -278,8 +279,8 @@ def mark_as_notified(reminder_id):
         return jsonify({"status": "not found"}), 404
 
 def check_appointments():
-    with app.app_context():
-        while True:
+    while True:
+        with app.app_context():   
             now = datetime.now()
             upcoming = Appointment.query.filter(Appointment.datetime <= now, Appointment.notified == False).all()
             for appt in upcoming:

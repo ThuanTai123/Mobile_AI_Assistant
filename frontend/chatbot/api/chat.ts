@@ -2,7 +2,7 @@ import axios from "axios"
 import { getCurrentCity } from "../screens/location"
 import { handleDeviceCommand } from "../utils/DeviceCommandHandler"
 
-const API_URL = "http://192.168.1.88:5000"
+const API_URL = "https://mobile-ai-assistant.onrender.com"
 
 export interface BotResponse {
   [x: string]: any

@@ -90,21 +90,23 @@ export const handleDeviceCommand = async (message: string): Promise<string | nul
     }
   }
 
-    // Hỏi mức âm lượng hiện tại
-  if (msg.includes('âm lượng hiện tại') || msg.includes('mức âm lượng')) {
-    const level = await getVolumeLevel();
-    return level >= 0
-      ? `🔊 Âm lượng hiện tại là ${level}%.`
-      : 'Không thể lấy được mức âm lượng.';
-  }
+const brightnessRegex = /((độ sáng|sáng màn hình|mức sáng).*(hiện tại|bao nhiêu|là bao nhiêu|là mấy|%)|bao nhiêu phần trăm độ sáng|sáng bao nhiêu)/i;
+const volumeRegex = /((âm lượng|mức âm|mức âm thanh).*(hiện tại|bao nhiêu|là bao nhiêu|là mấy|%)|bao nhiêu phần trăm âm lượng|âm lượng bao nhiêu)/i;
 
-  // Hỏi độ sáng hiện tại
-  if (msg.includes('độ sáng hiện tại') || msg.includes('mức độ sáng')) {
-    const level = await getBrightnessLevel();
-    return level >= 0
-      ? `🌞 Độ sáng hiện tại là ${level}%.`
-      : 'Không thể lấy được độ sáng.';
-  }
+if (brightnessRegex.test(msg)) {
+  const level = await getBrightnessLevel();
+  return level >= 0
+    ? `🌞 Độ sáng hiện tại là ${level}%.`
+    : 'Không thể lấy được độ sáng.';
+}
+
+if (volumeRegex.test(msg)) {
+  const level = await getVolumeLevel();
+  return level >= 0
+    ? `🔊 Âm lượng hiện tại là ${level}%.`
+    : 'Không thể lấy được mức âm lượng.';
+}
+
 
   // Mở cài đặt WiFi
   if (msg.includes('bật wifi') || msg.includes('mở wifi')) {

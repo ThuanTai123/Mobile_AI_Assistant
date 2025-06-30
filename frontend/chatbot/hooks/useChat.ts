@@ -10,6 +10,7 @@ import { checkAndOpenApp } from '../utils/AppLauncher';
 import { scheduleReminderNotification } from '../utils/Notifications';
 // ✅ FIX: Import TimeParser
 import { parseTimeFromMessage } from '../utils/TimeParser';
+import { handleOpenMusic } from '../utils/MusicLauncher';
 
 const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
@@ -23,6 +24,30 @@ export const useChat = (onApiError?: () => void) => {
   const scrollToBottom = () => {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
+  const handleBotResponse = async (text: string) => {
+    const botMessage: Message = {
+      id: generateId(),
+      text,
+      sender: "bot",
+    };
+
+    setMessages((prev) => [...prev, botMessage]);
+    await saveMessage(text, "bot");
+
+    setIsSpeaking(true);
+    Speech.speak(text, {
+      language: "vi-VN",
+      pitch: 1,
+      rate: 1,
+      onDone: () => {
+        setIsSpeaking(false);
+        setIsRecording(false);
+      },
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  };
+
 
   // ✅ UPDATED: Enhanced note extraction with time parsing
   const extractNoteFromMessage = (originalMessage: string, botReply: string): string => {
@@ -87,40 +112,21 @@ export const useChat = (onApiError?: () => void) => {
       // Check for app opening
       const { opened, appName } = await checkAndOpenApp(textToSend);
       if (opened) {
-        const appResponse = `Đã mở ứng dụng ${appName} cho bạn.`;
-        const botMessage: Message = {
-          id: generateId(),
-          text: appResponse,
-          sender: "bot",
-        };
-        setMessages((prev) => [...prev, botMessage]);
-        await saveMessage(appResponse, "bot");
+        await handleBotResponse(`Đã mở ứng dụng ${appName} cho bạn.`);
+        return;
+      }
+
+      // 2. Mở nhạc bằng YouTube
+      const musicResponse = await handleOpenMusic(textToSend);  // textToSend hoặc msg
+      if (musicResponse) {
+        await handleBotResponse(musicResponse);
         return;
       }
 
       // Check for device commands
       const deviceResponse = await handleDeviceCommand(textToSend);
       if (deviceResponse) {
-        const botMessage: Message = {
-          id: generateId(),
-          text: deviceResponse,
-          sender: "bot",
-        };
-        setMessages((prev) => [...prev, botMessage]);
-        await saveMessage(deviceResponse, "bot");
-        
-        setIsSpeaking(true);
-        Speech.speak(deviceResponse, {
-          language: "vi-VN",
-          pitch: 1,
-          rate: 1,
-          onDone: () => {
-            setIsSpeaking(false);
-            setIsRecording(false);
-          },
-          onStopped: () => setIsSpeaking(false),
-          onError: () => setIsSpeaking(false),
-        });
+        await handleBotResponse(deviceResponse);
         return;
       }
 
