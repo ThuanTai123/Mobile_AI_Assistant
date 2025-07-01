@@ -12,6 +12,62 @@ import {
 
 import * as Brightness from 'expo-brightness';
 import AndroidOpenSettings from 'react-native-android-open-settings';
+import { studyModeManager } from "./StudyModeManager"
+
+// Thêm vào file DeviceCommandHandler.ts hiện có
+export const handleStudyCommands = async (message: string): Promise<string | null> => {
+  const lowerMessage = message.toLowerCase()
+
+  // Bật chế độ học tập
+  if (lowerMessage.includes("bật chế độ học") || lowerMessage.includes("chế độ học tập")) {
+    return await studyModeManager.activateStudyMode("study")
+  }
+
+  // Bật chế độ làm việc
+  if (lowerMessage.includes("bật chế độ làm việc") || lowerMessage.includes("chế độ work")) {
+    return await studyModeManager.activateStudyMode("work")
+  }
+
+  // Bật chế độ tập trung
+  if (lowerMessage.includes("bật chế độ tập trung") || lowerMessage.includes("chế độ focus")) {
+    return await studyModeManager.activateStudyMode("focus")
+  }
+
+  // Tắt chế độ học tập
+  if (lowerMessage.includes("tắt chế độ học") || lowerMessage.includes("dừng học tập")) {
+    return await studyModeManager.deactivateStudyMode()
+  }
+
+  // Xem thống kê học tập
+  if (lowerMessage.includes("thống kê học tập") || lowerMessage.includes("xem tiến độ")) {
+    const stats = await studyModeManager.getStudyStats()
+    return (
+      `📊 Thống kê học tập:\n` +
+      `📚 Tổng phiên: ${stats.totalSessions}\n` +
+      `⏰ Tổng thời gian: ${stats.totalMinutes} phút\n` +
+      `📈 Trung bình/phiên: ${stats.averageSession} phút\n` +
+      `🍅 Pomodoro hoàn thành: ${stats.pomodoroCount}`
+    )
+  }
+
+  // Kiểm tra trạng thái
+  if (lowerMessage.includes("trạng thái học tập") || lowerMessage.includes("đang học không")) {
+    const status = studyModeManager.getStatus()
+    if (status.isActive && status.currentSession) {
+      const startTime = new Date(status.currentSession.startTime)
+      const elapsed = Math.round((Date.now() - startTime.getTime()) / (1000 * 60))
+      return (
+        `🎓 Đang trong chế độ ${status.currentSession.mode}\n` +
+        `⏰ Đã học: ${elapsed} phút\n` +
+        `🍅 Pomodoro: ${status.currentSession.pomodoroCount}`
+      )
+    } else {
+      return "😴 Hiện tại không trong chế độ học tập nào."
+    }
+  }
+
+  return null
+}
 
 /**
  * Xử lý các lệnh điều khiển thiết bị từ chatbot.
@@ -132,3 +188,4 @@ if (volumeRegex.test(msg)) {
 
   return null;
 };
+
