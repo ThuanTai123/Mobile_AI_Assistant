@@ -1,58 +1,98 @@
 // utils/TimeParser.ts
-
-export interface TimeInfo {
-  isValid: boolean;
+export interface ParsedTime {
   time: string;
   date: string;
+  isValid: boolean;
+  originalText: string;
 }
 
-export const parseTimeFromMessage = (message: string): TimeInfo => {
-  let time = "";
-  let date = "";
+export const parseTimeFromMessage = (message: string): ParsedTime => {
+  console.log("🕐 [TimeParser] Parsing message:", message);
+  
+  const lowerMessage = message.toLowerCase();
+  const today = new Date();
+  
+  // Patterns for time recognition - ✅ FIX: Improved regex for Vietnamese
+  const timePatterns = [
+    // 11h55, 12h30, 1h, 23h (Vietnamese format)
+    /(?:lúc\s+)?(\d{1,2})h(\d{1,2})?/g,
+    // 12:30, 1:45
+    /(?:lúc\s+)?(\d{1,2}):(\d{2})/g,
+    // 12 giờ 30, 1 giờ 45 phút
+    /(?:lúc\s+)?(\d{1,2})\s*giờ(?:\s*(\d{1,2})(?:\s*phút)?)?/g,
+    // 8 AM, 2 PM
+    /(?:lúc\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi,
+  ];
 
-  const now = new Date();
-  const normalized = message.toLowerCase();
+  // Date patterns
+  const datePatterns = [
+    /(ngày\s+mai|mai)/g,
+    /(hôm\s+nay)/g,
+    /ngày\s+(\d{1,2})(?:\/(\d{1,2}))?/g,
+  ];
 
-  // 🎯 1. Parse time
-  const timeMatch =
-    normalized.match(/(\d{1,2})h(\d{1,2})/) || // 10h30
-    normalized.match(/(\d{1,2}):(\d{2})/) || // 14:00
-    normalized.match(/(\d{1,2})\s*giờ\s*(\d{1,2})?/) || // 9 giờ 15
-    normalized.match(/(\d{1,2})(?:h| giờ)?/); // fallback: 10h
+  let parsedTime: string | null = null;
+  let parsedDate: string = today.toISOString().split('T')[0];
 
-  if (timeMatch) {
-    const hour = timeMatch[1].padStart(2, "0");
-    const minute = timeMatch[2] ? timeMatch[2].padStart(2, "0") : "00";
-    time = `${hour}:${minute}`;
-  }
-
-  // 🎯 2. Parse date
-  const today = now.toISOString().split("T")[0];
-
-  if (normalized.includes("hôm nay")) {
-    date = today;
-  } else if (normalized.includes("ngày mai") || normalized.includes("mai")) {
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    date = tomorrow.toISOString().split("T")[0];
-  } else {
-    const dateMatch =
-      normalized.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/) || // 30/06/2025
-      normalized.match(/(\d{1,2})[\/\-](\d{1,2})/); // 30/06
-
-    if (dateMatch) {
-      const day = dateMatch[1].padStart(2, "0");
-      const month = dateMatch[2].padStart(2, "0");
-      const year = dateMatch[3] || now.getFullYear();
-      date = `${year}-${month}-${day}`;
+  // Parse time with detailed logging
+  for (let i = 0; i < timePatterns.length; i++) {
+    const pattern = timePatterns[i];
+    // ✅ FIX: Reset regex lastIndex to avoid issues
+    pattern.lastIndex = 0;
+    const match = pattern.exec(lowerMessage);
+    console.log(`🔍 [TimeParser] Pattern ${i + 1}:`, pattern.source, "Match:", match);
+    
+    if (match) {
+      let hour = parseInt(match[1]);
+      let minute = parseInt(match[2] || '0');
+      
+      console.log(`⏰ [TimeParser] Extracted - Hour: ${hour}, Minute: ${minute}`);
+      
+      // Handle AM/PM
+      if (match[3]) {
+        const ampm = match[3].toLowerCase();
+        if (ampm === 'pm' && hour !== 12) hour += 12;
+        if (ampm === 'am' && hour === 12) hour = 0;
+        console.log(`🌅 [TimeParser] AM/PM adjusted - Hour: ${hour}`);
+      }
+      
+      // Validate time
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        parsedTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        console.log(`✅ [TimeParser] Valid time found: ${parsedTime}`);
+        break;
+      } else {
+        console.log(`❌ [TimeParser] Invalid time - Hour: ${hour}, Minute: ${minute}`);
+      }
     }
   }
 
-  const isValid = !!time && !!date;
+  // Parse date
+  for (const pattern of datePatterns) {
+    pattern.lastIndex = 0; // Reset regex
+    const match = pattern.exec(lowerMessage);
+    if (match) {
+      console.log(`📅 [TimeParser] Date pattern matched:`, match);
+      if (match[1] && (match[1].includes('mai') || match[1] === 'mai')) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        parsedDate = tomorrow.toISOString().split('T')[0];
+        console.log(`📅 [TimeParser] Tomorrow date: ${parsedDate}`);
+      } else if (match[1] && match[1].includes('hôm nay')) {
+        parsedDate = today.toISOString().split('T')[0];
+        console.log(`📅 [TimeParser] Today date: ${parsedDate}`);
+      }
+      break;
+    }
+  }
 
-  return {
-    isValid,
-    time,
-    date,
+  const result = {
+    time: parsedTime || '',
+    date: parsedDate,
+    isValid: parsedTime !== null,
+    originalText: message
   };
+
+  console.log(`🎯 [TimeParser] Final result:`, result);
+  return result;
 };
