@@ -283,5 +283,139 @@ reminderBadgeText: {
     shadowRadius: 2,
     elevation: 2,
   },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: "#666",
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  statusCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  activeSession: {
+    alignItems: "center",
+  },
+  activeMode: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#4ECDC4",
+    marginBottom: 10,
+  },
+  sessionInfo: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 5,
+  },
+  inactiveText: {
+    fontSize: 16,
+    color: "#999",
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  modeSelection: {
+    marginBottom: 20,
+  },
+  modeButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modeButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modeIcon: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
+  modeText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  actionButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 15,
+  },
+  deactivateButton: {
+    backgroundColor: "#ff6b6b",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  statsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#4ECDC4",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+  },
+  tipsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tipText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  
 })
 export default styles;
+
