@@ -1,26 +1,33 @@
 import { Linking, Alert, Platform } from 'react-native';
 
 const appSchemes: Record<string, { android: string; ios: string; fallback?: string }> = {
-  youtube:   { android: 'vnd.youtube://', ios: 'youtube://', fallback: 'https://www.youtube.com' },
-  facebook:  { android: 'fb://',          ios: 'fb://',       fallback: 'https://www.facebook.com' },
-  zalo:      { android: 'zalo://',        ios: 'zalo://',     fallback: 'https://zalo.me' },
-  gmail:     { android: 'googlegmail://', ios: 'googlegmail://', fallback: 'https://mail.google.com' },
-  spotify:   { android: 'spotify://',     ios: 'spotify://',  fallback: 'https://open.spotify.com' },
-  tiktok:    { android: 'snssdk1233://',  ios: 'snssdk1233://', fallback: 'https://www.tiktok.com' },
-  settings:  { android: 'android.settings.SETTINGS', ios: 'App-Prefs://' },
+  youtube:  { android: 'vnd.youtube://', ios: 'youtube://', fallback: 'https://www.youtube.com' },
+  facebook: { android: 'fb://', ios: 'fb://', fallback: 'https://www.facebook.com' },
+  zalo:     { android: 'zalo://', ios: 'zalo://', fallback: 'https://zalo.me' },
+  gmail:    { android: 'googlegmail://', ios: 'googlegmail://', fallback: 'https://mail.google.com' },
+  spotify:  { android: 'spotify://', ios: 'spotify://', fallback: 'https://open.spotify.com' },
+  tiktok:   { android: 'snssdk1233://', ios: 'snssdk1233://', fallback: 'https://www.tiktok.com' },
+  settings: { android: 'android.settings.SETTINGS', ios: 'App-Prefs://' },
+  phone:    { android: 'tel:', ios: 'tel:' } // ✅ Mở trình quay số
 };
 
-export const openAppByName = async (appName: string): Promise<boolean> => {
+/**
+ * Mở ứng dụng theo tên và truyền số (nếu là phone)
+ */
+export const openAppByName = async (appName: string, phoneNumber?: string): Promise<boolean> => {
   const entry = appSchemes[appName.toLowerCase()];
   if (!entry) {
     Alert.alert('Ứng dụng không được hỗ trợ', `Ứng dụng "${appName}" chưa được hỗ trợ mở tự động.`);
     return false;
   }
 
-  const scheme = Platform.OS === 'android' ? entry.android : entry.ios;
+  const baseScheme = Platform.OS === 'android' ? entry.android : entry.ios;
+  const scheme = appName === 'phone' && phoneNumber 
+    ? `${baseScheme}${phoneNumber}` // ✅ tel:0906...
+    : baseScheme;
   const fallback = entry.fallback;
 
-    try {
+  try {
     await Linking.openURL(scheme);
     return true;
   } catch (error) {
@@ -39,21 +46,33 @@ export const openAppByName = async (appName: string): Promise<boolean> => {
   }
 };
 
+/**
+ * Tự động phát hiện và mở ứng dụng nếu text chứa "mở ..." hoặc "gọi ..."
+ */
 export const checkAndOpenApp = async (
   text: string
 ): Promise<{ opened: boolean; appName?: string }> => {
   const trimmedText = text.trim().toLowerCase();
 
+  // Trường hợp: "mở youtube", "mở zalo"
   if (trimmedText.startsWith('mở ')) {
     const appName = trimmedText.slice(3).trim();
-
-    // So khớp tên app theo danh sách hỗ trợ
-    const supportedApps = Object.keys(appSchemes); // ["youtube", "facebook", ...]
+    const supportedApps = Object.keys(appSchemes);
     for (const key of supportedApps) {
       if (appName === key || appName.includes(key)) {
         const opened = await openAppByName(key);
         return { opened, appName: key };
       }
+    }
+  }
+
+  // Trường hợp: "gọi 0906xxxxxx"
+  if (trimmedText.startsWith('gọi ')) {
+    const match = trimmedText.match(/gọi\s+(\+?[\d\s\-]+)/i);
+    if (match) {
+      const phoneNumber = match[1].replace(/\s|-/g, '');
+      const opened = await openAppByName('phone', phoneNumber);
+      return { opened, appName: 'phone' };
     }
   }
 

@@ -23,19 +23,19 @@ export const BottomActions: React.FC<BottomActionsProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.actionRow}>
-        {/* History Button */}
+        {/* Lịch sử */}
         <TouchableOpacity style={styles.actionButton} onPress={onHistoryPress}>
           <Text style={styles.actionIcon}>📚</Text>
           <Text style={styles.actionText}>Lịch sử</Text>
         </TouchableOpacity>
 
-        {/* Notes Button */}
+        {/* Ghi chú */}
         <TouchableOpacity style={styles.actionButton} onPress={onNotesPress}>
           <Text style={styles.actionIcon}>📝</Text>
           <Text style={styles.actionText}>Ghi chú</Text>
         </TouchableOpacity>
 
-        {/* Study Mode Button */}
+        {/* Học tập */}
         <TouchableOpacity style={styles.actionButton} onPress={onStudyModePress}>
           <Text style={styles.actionIcon}>🎓</Text>
           <Text style={styles.actionText}>Học tập</Text>
@@ -70,6 +70,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
   actionButton: {
     alignItems: "center",

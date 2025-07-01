@@ -32,6 +32,7 @@ import {
   requestNotificationPermission,
   setupNotificationHandler,
 } from "../utils/Notifications"
+import { initializePhoneHandler } from "../utils/PhoneCallHandler"
 
 interface Message {
   id: number
@@ -69,6 +70,7 @@ const ChatScreen = () => {
       await requestNotificationPermission()
       setupNotificationHandler()
       if (Platform.OS === "android") await setupNotificationChannel()
+      await initializePhoneHandler()
       loadChatHistory()
       loadNotes()
     }
