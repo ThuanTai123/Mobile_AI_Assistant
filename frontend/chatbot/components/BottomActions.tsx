@@ -1,5 +1,9 @@
 import type React from "react"
 import { View, TouchableOpacity, Text, StyleSheet } from "react-native"
+import { Ionicons } from '@expo/vector-icons';
+import SpeakingMicIcon from './SpeakingMicIcon';
+
+
 
 interface BottomActionsProps {
   onHistoryPress: () => void
@@ -51,7 +55,13 @@ export const BottomActions: React.FC<BottomActionsProps> = ({
           onPress={isListening ? stopListening : startListening}
           disabled={isSpeaking}
         >
-          <Text style={styles.voiceIcon}>{isSpeaking ? "🔊" : isListening ? "🎤" : "🎙️"}</Text>
+          {isSpeaking ? (
+            <SpeakingMicIcon isSpeaking={true} />
+          ) : (
+            <Text style={styles.voiceIcon}>
+              {isListening ? "🎤" : "🎙️"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

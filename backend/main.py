@@ -1,5 +1,4 @@
 import os
-print("✅ APP STARTING on Render...")
 import re
 import sqlite3
 import uuid
@@ -158,7 +157,7 @@ def chat_endpoint():
             payload = {
                 "model": "mistralai/mistral-7b-instruct",
                 "messages": [
-                    {"role": "system", "content": "Bạn là Ruby, trợ lý ảo..."},
+                    {"role": "system", "content": "Bạn là Ruby – trợ lý ảo lanh lợi, trả lời NGẮN GỌN, đúng trọng tâm, súc tích, kèm chút hài hước dí dỏm. Không nói lan man, không giải thích thừa. Ưu tiên trả lời nhanh, vui, dễ hiểu."},
                     {"role": "user", "content": user_message}
                 ]
             }

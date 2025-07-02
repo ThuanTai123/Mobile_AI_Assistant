@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { checkAndOpenApp } from "./AppLauncher"
 import { scheduleReminderNotification } from "./Notifications"
+import { setBrightnessLevel } from "../screens/DeviceControls"
 
 export interface StudyModeConfig {
   brightness: number
@@ -185,7 +186,7 @@ class StudyModeManager {
   private async applyStudyConfiguration(config: StudyModeConfig): Promise<void> {
     try {
       // Điều chỉnh độ sáng
-      await Brightness.setBrightnessAsync(config.brightness)
+      await setBrightnessLevel(30)
       console.log(`🔆 Brightness set to ${Math.round(config.brightness * 100)}%`)
 
       // Cấu hình chế độ im lặng

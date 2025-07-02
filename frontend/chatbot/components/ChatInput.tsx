@@ -22,7 +22,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     <View style={styles.inputContainer}>
       <View style={styles.inputWrapper}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { color: '#000' }]}
           value={inputText}
           onChangeText={setInputText}
           placeholder="Nhập..."

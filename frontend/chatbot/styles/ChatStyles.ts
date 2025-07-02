@@ -11,6 +11,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+    actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+    actionIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+    actionText: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+  },
   reminderBadge: {
   position: 'absolute',
   right: 20,

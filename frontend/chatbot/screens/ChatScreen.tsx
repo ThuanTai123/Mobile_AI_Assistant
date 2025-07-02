@@ -33,6 +33,7 @@ import {
   setupNotificationHandler,
 } from "../utils/Notifications"
 import { initializePhoneHandler } from "../utils/PhoneCallHandler"
+import { ChatInput } from "../components/ChatInput"
 
 interface Message {
   id: number
@@ -137,7 +138,7 @@ const ChatScreen = () => {
   const handleSendMessage = async () => {
     const textToSend = inputText.trim()
     if (!textToSend) return
-
+    setInputText("")
     try {
       await handleSend(textToSend)
       setInputText("")
@@ -174,20 +175,13 @@ const ChatScreen = () => {
           showsVerticalScrollIndicator={false}
         />
 
-        <View style={inputStyles.inputContainer}>
-          <TextInput
-            style={inputStyles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Nhập tin nhắn..."
-            multiline
-            onSubmitEditing={handleSendMessage}
-            returnKeyType="send"
-          />
-          <TouchableOpacity style={inputStyles.sendButton} onPress={handleSendMessage}>
-            <Text style={inputStyles.sendButtonText}>Gửi</Text>
-          </TouchableOpacity>
-        </View>
+        <ChatInput
+          inputText={inputText}
+          setInputText={setInputText}
+          onSend={() => handleSendMessage()}
+          isListening={isListening}
+          partialTranscript={partialTranscript}
+        />
 
         {isListening && (
           <View style={inputStyles.voiceIndicator}>
