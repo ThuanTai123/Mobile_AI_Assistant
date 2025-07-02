@@ -155,7 +155,7 @@ def chat_endpoint():
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": "mistralai/mistral-7b-instruct",
+                "model": "nousresearch/nous-hermes-2-mistral",
                 "messages": [
                     {"role": "system", "content": "Bạn là Ruby – trợ lý ảo lanh lợi, trả lời NGẮN GỌN, đúng trọng tâm, súc tích, kèm chút hài hước dí dỏm. Không nói lan man, không giải thích thừa. Ưu tiên trả lời nhanh, vui, dễ hiểu."},
                     {"role": "user", "content": user_message}
