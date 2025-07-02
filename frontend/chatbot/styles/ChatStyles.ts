@@ -1,5 +1,5 @@
+import { StyleSheet, Platform } from "react-native"
 
-import { StyleSheet,Platform } from "react-native"
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -8,51 +8,50 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
   },
-    actionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
+  actionRow: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    flexWrap: "wrap" as const,
     gap: 8,
   },
-    actionIcon: {
+  actionIcon: {
     fontSize: 20,
     marginBottom: 4,
   },
-    actionText: {
+  actionText: {
     fontSize: 12,
     color: "#666",
-    fontWeight: "500",
+    fontWeight: "500" as const,
   },
   reminderBadge: {
-  position: 'absolute',
-  right: 20,
-  top: 10,
-  backgroundColor: '#FF6B6B',
-  borderRadius: 12,
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  minWidth: 24,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-// Thêm vào ChatStyles.js
-sectionHeader: {
-  paddingVertical: 10,
-  paddingHorizontal: 15,
-  backgroundColor: '#f8f9fa',
-  borderBottomWidth: 1,
-  borderBottomColor: '#e9ecef',
-},
-sectionTitle: {
-  fontSize: 16,
-  fontWeight: 'bold',
-  color: '#495057',
-},
-themeToggleButton: {
+    position: "absolute" as const,
+    right: 20,
+    top: 10,
+    backgroundColor: "#FF6B6B",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 24,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  sectionHeader: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: "#f8f9fa",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e9ecef",
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold" as const,
+    color: "#495057",
+  },
+  themeToggleButton: {
     backgroundColor: "#e0f7fa",
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -64,47 +63,47 @@ themeToggleButton: {
     color: "#333",
     fontSize: 14,
   },
-headerButtons: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-noteTitleContainer: {
-  flex: 1,
-},
-reminderTime: {
-  fontSize: 12,
-  color: '#007bff',
-  fontWeight: '600',
-  marginTop: 2,
-},
-overdueTime: {
-  color: '#dc3545',
-},
-overdueNote: {
-  borderLeftWidth: 4,
-  borderLeftColor: '#dc3545',
-},
-noteActions: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-completeButton: {
-  padding: 5,
-  marginRight: 5,
-},
-completedNote: {
-  opacity: 0.6,
-  backgroundColor: '#f8f9fa',
-},
-completedText: {
-  textDecorationLine: 'line-through',
-  color: '#6c757d',
-},
-reminderBadgeText: {
-  color: 'white',
-  fontSize: 12,
-  fontWeight: 'bold',
-},
+  headerButtons: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+  },
+  noteTitleContainer: {
+    flex: 1,
+  },
+  reminderTime: {
+    fontSize: 12,
+    color: "#007bff",
+    fontWeight: "600" as const,
+    marginTop: 2,
+  },
+  overdueTime: {
+    color: "#dc3545",
+  },
+  overdueNote: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#dc3545",
+  },
+  noteActions: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+  },
+  completeButton: {
+    padding: 5,
+    marginRight: 5,
+  },
+  completedNote: {
+    opacity: 0.6,
+    backgroundColor: "#f8f9fa",
+  },
+  completedText: {
+    textDecorationLine: "line-through" as const,
+    color: "#6c757d",
+  },
+  reminderBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold" as const,
+  },
   modalContainer: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -117,16 +116,16 @@ reminderBadgeText: {
     elevation: 5,
   },
   modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#333",
   },
   closeButton: {
@@ -147,7 +146,7 @@ reminderBadgeText: {
     marginBottom: 4,
   },
   senderLabel: {
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#4ECDC4",
   },
   noteItem: {
@@ -159,14 +158,14 @@ reminderBadgeText: {
     borderLeftColor: "#ffc107",
   },
   noteHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "flex-start" as const,
     marginBottom: 4,
   },
   noteTitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#333",
     flex: 1,
     marginRight: 8,
@@ -180,32 +179,32 @@ reminderBadgeText: {
   timestampText: {
     fontSize: 10,
     color: "#999",
-    textAlign: "right",
+    textAlign: "right" as const,
   },
   debugText: {
     fontSize: 8,
     color: "#999",
-    fontStyle: "italic",
+    fontStyle: "italic" as const,
     marginTop: 4,
     backgroundColor: "#f0f0f0",
     padding: 2,
   },
   emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
     paddingVertical: 40,
   },
   emptyText: {
     fontSize: 16,
     color: "#666",
     marginTop: 12,
-    fontWeight: "500",
+    fontWeight: "500" as const,
   },
   emptySubText: {
     fontSize: 12,
     color: "#999",
     marginTop: 4,
-    textAlign: "center",
+    textAlign: "center" as const,
   },
   keyboardContainer: {
     flex: 1,
@@ -213,12 +212,12 @@ reminderBadgeText: {
   header: {
     backgroundColor: "#4ECDC4",
     paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   headerText: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#000",
     letterSpacing: 1,
   },
@@ -233,10 +232,10 @@ reminderBadgeText: {
     marginVertical: 4,
   },
   userMessage: {
-    alignItems: "flex-end",
+    alignItems: "flex-end" as const,
   },
   botMessage: {
-    alignItems: "flex-start",
+    alignItems: "flex-start" as const,
   },
   messageBubble: {
     maxWidth: "75%",
@@ -261,8 +260,8 @@ reminderBadgeText: {
     paddingBottom: Platform.OS === "android" ? 12 : 0,
   },
   inputWrapper: {
-    flexDirection: "row",
-    alignItems: "flex-end",
+    flexDirection: "row" as const,
+    alignItems: "flex-end" as const,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
@@ -283,12 +282,12 @@ reminderBadgeText: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   bottomIcons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+    flexDirection: "row" as const,
+    justifyContent: "space-around" as const,
     backgroundColor: "#4ECDC4",
     paddingVertical: 16,
     borderTopLeftRadius: 25,
@@ -306,14 +305,14 @@ reminderBadgeText: {
     backgroundColor: "#fff",
     borderRadius: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height:1 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#333",
   },
   closeButtonText: {
@@ -335,13 +334,12 @@ reminderBadgeText: {
     shadowRadius: 4,
     elevation: 3,
   },
-
   activeSession: {
-    alignItems: "center",
+    alignItems: "center" as const,
   },
   activeMode: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#4ECDC4",
     marginBottom: 10,
   },
@@ -353,22 +351,22 @@ reminderBadgeText: {
   inactiveText: {
     fontSize: 16,
     color: "#999",
-    textAlign: "center",
-    fontStyle: "italic",
+    textAlign: "center" as const,
+    fontStyle: "italic" as const,
   },
   modeSelection: {
     marginBottom: 20,
   },
   modeButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
   },
   modeButton: {
     flex: 1,
     marginHorizontal: 5,
     padding: 20,
     borderRadius: 12,
-    alignItems: "center",
+    alignItems: "center" as const,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -381,7 +379,7 @@ reminderBadgeText: {
   },
   modeText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     fontSize: 14,
   },
   actionButton: {
@@ -395,7 +393,7 @@ reminderBadgeText: {
   },
   buttonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     fontSize: 16,
   },
   statsCard: {
@@ -410,16 +408,16 @@ reminderBadgeText: {
     elevation: 3,
   },
   statsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
   },
   statItem: {
-    alignItems: "center",
+    alignItems: "center" as const,
     flex: 1,
   },
   statNumber: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: "#4ECDC4",
   },
   statLabel: {
@@ -443,7 +441,6 @@ reminderBadgeText: {
     marginBottom: 8,
     lineHeight: 20,
   },
-  
 })
-export default styles;
 
+export default styles

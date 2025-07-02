@@ -2,172 +2,228 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from "react-native"
-import { studyModeManager, type StudySession } from "../utils/StudyModeManager"
+import { View, Text, TouchableOpacity, Modal } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import styles from "../styles/ChatStyles"
+
 interface StudyModePanelProps {
   visible: boolean
   onClose: () => void
+  isDarkTheme?: boolean
 }
 
-export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose }) => {
+export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose, isDarkTheme = false }) => {
+  const [activeMode, setActiveMode] = useState<string | null>(null)
+  const [sessionTime, setSessionTime] = useState(0)
   const [isActive, setIsActive] = useState(false)
-  const [currentSession, setCurrentSession] = useState<StudySession | null>(null)
-  const [stats, setStats] = useState({
-    totalSessions: 0,
-    totalMinutes: 0,
-    averageSession: 0,
-    pomodoroCount: 0,
+
+  // Dynamic styles based on theme
+  const getThemeStyles = () => ({
+    overlay: [
+      styles.overlay,
+      {
+        backgroundColor: isDarkTheme ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.5)",
+      },
+    ],
+    modalContainer: [
+      styles.modalContainer,
+      {
+        backgroundColor: isDarkTheme ? "#1a1a1a" : "#fff",
+      },
+    ],
+    modalHeader: [
+      styles.modalHeader,
+      {
+        borderBottomColor: isDarkTheme ? "#333" : "#eee",
+      },
+    ],
+    modalTitle: [
+      styles.modalTitle,
+      {
+        color: isDarkTheme ? "#fff" : "#333",
+      },
+    ],
+    statusCard: [
+      styles.statusCard,
+      {
+        backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
+      },
+    ],
+    activeMode: [
+      styles.activeMode,
+      {
+        color: isDarkTheme ? "#4ECDC4" : "#4ECDC4",
+      },
+    ],
+    sessionInfo: [
+      styles.sessionInfo,
+      {
+        color: isDarkTheme ? "#ccc" : "#666",
+      },
+    ],
+    inactiveText: [
+      styles.inactiveText,
+      {
+        color: isDarkTheme ? "#888" : "#999",
+      },
+    ],
+    statsCard: [
+      styles.statsCard,
+      {
+        backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
+      },
+    ],
+    statNumber: [
+      styles.statNumber,
+      {
+        color: isDarkTheme ? "#4ECDC4" : "#4ECDC4",
+      },
+    ],
+    statLabel: [
+      styles.statLabel,
+      {
+        color: isDarkTheme ? "#ccc" : "#666",
+      },
+    ],
+    tipsCard: [
+      styles.tipsCard,
+      {
+        backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
+      },
+    ],
+    tipText: [
+      styles.tipText,
+      {
+        color: isDarkTheme ? "#ccc" : "#666",
+      },
+    ],
   })
-  const [selectedMode, setSelectedMode] = useState<"study" | "work" | "focus">("study")
 
+  const themeStyles = getThemeStyles()
+
+  // Timer effect
   useEffect(() => {
-    if (visible) {
-      loadData()
+    let interval: NodeJS.Timeout
+    if (isActive && activeMode) {
+      interval = setInterval(() => {
+        setSessionTime((time) => time + 1)
+      }, 1000)
     }
-  }, [visible])
+    return () => clearInterval(interval)
+  }, [isActive, activeMode])
 
-  const loadData = async () => {
-    const status = studyModeManager.getStatus()
-    setIsActive(status.isActive)
-    setCurrentSession(status.currentSession)
-
-    const studyStats = await studyModeManager.getStudyStats()
-    setStats(studyStats)
+  // Format time display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const handleActivateMode = async (mode: "study" | "work" | "focus") => {
-    try {
-      await studyModeManager.activateStudyMode(mode)
-      await loadData()
-    } catch (error) {
-      console.error("Error activating study mode:", error)
-    }
+  // Start study session
+  const startSession = (mode: string) => {
+    setActiveMode(mode)
+    setIsActive(true)
+    setSessionTime(0)
   }
 
-  const handleDeactivateMode = async () => {
-    try {
-      await studyModeManager.deactivateStudyMode()
-      await loadData()
-    } catch (error) {
-      console.error("Error deactivating study mode:", error)
-    }
-  }
-
-  const getModeIcon = (mode: string) => {
-    switch (mode) {
-      case "study":
-        return "🎓"
-      case "work":
-        return "💼"
-      case "focus":
-        return "🎯"
-      default:
-        return "📚"
-    }
-  }
-
-  const getModeColor = (mode: string) => {
-    switch (mode) {
-      case "study":
-        return "#4ECDC4"
-      case "work":
-        return "#45B7D1"
-      case "focus":
-        return "#96CEB4"
-      default:
-        return "#4ECDC4"
-    }
+  // Stop study session
+  const stopSession = () => {
+    setIsActive(false)
+    setActiveMode(null)
+    setSessionTime(0)
   }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>🎓 Chế độ học tập</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content}>
-          {/* Current Status */}
-          <View style={styles.statusCard}>
-            <Text style={styles.sectionTitle}>Trạng thái hiện tại</Text>
-            {isActive && currentSession ? (
-              <View style={styles.activeSession}>
-                <Text style={styles.activeMode}>
-                  {getModeIcon(currentSession.mode)} Chế độ {currentSession.mode}
-                </Text>
-                <Text style={styles.sessionInfo}>
-                  ⏰ Bắt đầu: {new Date(currentSession.startTime).toLocaleTimeString("vi-VN")}
-                </Text>
-                <Text style={styles.sessionInfo}>🍅 Pomodoro: {currentSession.pomodoroCount}</Text>
-                <TouchableOpacity style={[styles.actionButton, styles.deactivateButton]} onPress={handleDeactivateMode}>
-                  <Text style={styles.buttonText}>Tắt chế độ học tập</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <Text style={styles.inactiveText}>😴 Không có chế độ nào đang hoạt động</Text>
-            )}
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={themeStyles.overlay}>
+        <View style={themeStyles.modalContainer}>
+          <View style={themeStyles.modalHeader}>
+            <Text style={themeStyles.modalTitle}>🎓 Chế độ học tập</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={isDarkTheme ? "#ccc" : "#666"} />
+            </TouchableOpacity>
           </View>
 
-          {/* Mode Selection */}
-          {!isActive && (
-            <View style={styles.modeSelection}>
-              <Text style={styles.sectionTitle}>Chọn chế độ</Text>
-              <View style={styles.modeButtons}>
-                {(["study", "work", "focus"] as const).map((mode) => (
-                  <TouchableOpacity
-                    key={mode}
-                    style={[styles.modeButton, { backgroundColor: getModeColor(mode) }]}
-                    onPress={() => handleActivateMode(mode)}
-                  >
-                    <Text style={styles.modeIcon}>{getModeIcon(mode)}</Text>
-                    <Text style={styles.modeText}>
-                      {mode === "study" ? "Học tập" : mode === "work" ? "Làm việc" : "Tập trung"}
-                    </Text>
+          <View style={styles.content}>
+            {/* Current Session Status */}
+            <View style={themeStyles.statusCard}>
+              {activeMode ? (
+                <View style={styles.activeSession}>
+                  <Text style={themeStyles.activeMode}>
+                    {activeMode === "focus" ? "🎯 Tập trung" : activeMode === "review" ? "📚 Ôn tập" : "✍️ Ghi chú"}
+                  </Text>
+                  <Text style={themeStyles.sessionInfo}>Thời gian: {formatTime(sessionTime)}</Text>
+                  <Text style={themeStyles.sessionInfo}>Trạng thái: {isActive ? "Đang hoạt động" : "Tạm dừng"}</Text>
+                  <TouchableOpacity style={[styles.actionButton, styles.deactivateButton]} onPress={stopSession}>
+                    <Text style={styles.buttonText}>Kết thúc phiên</Text>
                   </TouchableOpacity>
-                ))}
+                </View>
+              ) : (
+                <Text style={themeStyles.inactiveText}>Chưa có phiên học tập nào đang hoạt động</Text>
+              )}
+            </View>
+
+            {/* Mode Selection */}
+            {!activeMode && (
+              <View style={styles.modeSelection}>
+                <View style={styles.modeButtons}>
+                  <TouchableOpacity
+                    style={[styles.modeButton, { backgroundColor: "#4ECDC4" }]}
+                    onPress={() => startSession("focus")}
+                  >
+                    <Text style={styles.modeIcon}>🎯</Text>
+                    <Text style={styles.modeText}>Tập trung</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modeButton, { backgroundColor: "#45B7B8" }]}
+                    onPress={() => startSession("review")}
+                  >
+                    <Text style={styles.modeIcon}>📚</Text>
+                    <Text style={styles.modeText}>Ôn tập</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modeButton, { backgroundColor: "#96CEB4" }]}
+                    onPress={() => startSession("notes")}
+                  >
+                    <Text style={styles.modeIcon}>✍️</Text>
+                    <Text style={styles.modeText}>Ghi chú</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Study Stats */}
+            <View style={themeStyles.statsCard}>
+              <Text style={themeStyles.modalTitle}>📊 Thống kê học tập</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Text style={themeStyles.statNumber}>0</Text>
+                  <Text style={themeStyles.statLabel}>Phiên hôm nay</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={themeStyles.statNumber}>0</Text>
+                  <Text style={themeStyles.statLabel}>Phút học</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={themeStyles.statNumber}>0</Text>
+                  <Text style={themeStyles.statLabel}>Ghi chú</Text>
+                </View>
               </View>
             </View>
-          )}
 
-          {/* Statistics */}
-          <View style={styles.statsCard}>
-            <Text style={styles.sectionTitle}>📊 Thống kê</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.totalSessions}</Text>
-                <Text style={styles.statLabel}>Phiên học</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.totalMinutes}</Text>
-                <Text style={styles.statLabel}>Phút</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.averageSession}</Text>
-                <Text style={styles.statLabel}>TB/Phiên</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.pomodoroCount}</Text>
-                <Text style={styles.statLabel}>🍅 Pomodoro</Text>
-              </View>
+            {/* Study Tips */}
+            <View style={themeStyles.tipsCard}>
+              <Text style={themeStyles.modalTitle}>💡 Mẹo học tập</Text>
+              <Text style={themeStyles.tipText}>• Sử dụng kỹ thuật Pomodoro: 25 phút tập trung, 5 phút nghỉ</Text>
+              <Text style={themeStyles.tipText}>• Tạo ghi chú bằng giọng nói để ghi lại ý tưởng nhanh chóng</Text>
+              <Text style={themeStyles.tipText}>• Ôn tập thường xuyên để củng cố kiến thức</Text>
+              <Text style={themeStyles.tipText}>• Tạo nhắc nhở để không bỏ lỡ thời gian học quan trọng</Text>
             </View>
           </View>
-
-          {/* Quick Tips */}
-          <View style={styles.tipsCard}>
-            <Text style={styles.sectionTitle}>💡 Mẹo sử dụng</Text>
-            <Text style={styles.tipText}>• Nói "Bật chế độ học tập" để kích hoạt</Text>
-            <Text style={styles.tipText}>• Nói "Tắt chế độ học tập" để dừng</Text>
-            <Text style={styles.tipText}>• Nói "Thống kê học tập" để xem tiến độ</Text>
-            <Text style={styles.tipText}>• Chế độ sẽ tự động điều chỉnh độ sáng và âm thanh</Text>
-          </View>
-        </ScrollView>
+        </View>
       </View>
     </Modal>
   )
 }
-
-

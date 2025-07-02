@@ -15,8 +15,7 @@ def extract_forecast_date(message: str) -> str:
     """
     message = message.lower()
     today = datetime.now()
-        # Dạng ngày cụ thể: 22/6 hoặc 22-06
-    match = re.search(r"(\d{1,2})[/-](\d{1,2})", message)
+    match = re.search(r"(?:ngày|mùng)?\s*(\d{1,2})\s*(?:[/-]|tháng)\s*(\d{1,2})", message)
     if match:
         day, month = map(int, match.groups())
         year = today.year

@@ -9,6 +9,7 @@ interface ChatInputProps {
   onSend: () => void;
   isListening: boolean;
   partialTranscript: string;
+  isDarkTheme?: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -17,16 +18,52 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   isListening,
   partialTranscript,
+  isDarkTheme = false,
 }) => {
+  // Dynamic styles based on theme using existing ChatStyles
+  const getThemeStyles = () => ({
+    inputContainer: [
+      styles.inputContainer,
+      {
+        backgroundColor: isDarkTheme ? "#1a1a1a" : "#fff",
+      }
+    ],
+    textInput: [
+      styles.textInput,
+      {
+        backgroundColor: isDarkTheme ? "#2d2d2d" : "#F8F8F8",
+        borderColor: isDarkTheme ? "#404040" : "#E0E0E0",
+        color: isDarkTheme ? "#fff" : "#000",
+      }
+    ],
+    partialTranscriptContainer: {
+      padding: 8,
+      paddingHorizontal: 12,
+      backgroundColor: isDarkTheme ? "#2d2d2d" : "#f0f9ff",
+      borderTopWidth: 1,
+      borderTopColor: isDarkTheme ? "#404040" : "#e0f7fa",
+    },
+    partialTranscriptText: {
+      fontStyle: "italic" as const, // Fix TypeScript error
+      color: isDarkTheme ? "#4ECDC4" : "#555",
+    },
+    partialTranscriptBold: {
+      fontWeight: "600" as const, // Fix TypeScript error
+      color: isDarkTheme ? "#fff" : "#000",
+    },
+  });
+
+  const themeStyles = getThemeStyles();
+
   return (
-    <View style={styles.inputContainer}>
+    <View style={themeStyles.inputContainer}>
       <View style={styles.inputWrapper}>
         <TextInput
-          style={[styles.textInput, { color: '#000' }]}
+          style={themeStyles.textInput}
           value={inputText}
           onChangeText={setInputText}
           placeholder="Nhập..."
-          placeholderTextColor="#999"
+          placeholderTextColor={isDarkTheme ? "#888" : "#999"}
           returnKeyType="send"
           onSubmitEditing={onSend}
           multiline
@@ -36,9 +73,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </TouchableOpacity>
       </View>
       {isListening && partialTranscript !== "" && (
-        <View style={{ padding: 8, paddingHorizontal: 12 }}>
-          <Text style={{ fontStyle: "italic", color: "#555" }}>
-            🎙️ Đang nói: <Text style={{ fontWeight: "600" }}>{partialTranscript}</Text>
+        <View style={themeStyles.partialTranscriptContainer}>
+          <Text style={themeStyles.partialTranscriptText}>
+            🎙️ Đang nói: <Text style={themeStyles.partialTranscriptBold}>{partialTranscript}</Text>
           </Text>
         </View>
       )}
