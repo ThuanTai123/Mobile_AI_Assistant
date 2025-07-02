@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Platform, Alert, PermissionsAndroid } from 'react-native';
 import Voice, { 
   SpeechRecognizedEvent, 
   SpeechResultsEvent, 
@@ -7,11 +7,6 @@ import Voice, {
   SpeechStartEvent,
   SpeechEndEvent 
 } from '@react-native-voice/voice';
-
-interface VoiceError {
-  code?: string;
-  message?: string;
-}
 
 interface UseVoiceReturn {
   isListening: boolean;
@@ -30,82 +25,136 @@ const useVoice = (): UseVoiceReturn => {
   const [partialTranscript, setPartialTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isListeningRef = useRef(false);
+  const isOperatingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const sessionActiveRef = useRef(false);
 
   useEffect(() => {
-    Voice.onSpeechStart = onSpeechStart;
-    Voice.onSpeechRecognized = onSpeechRecognized;
-    Voice.onSpeechEnd = onSpeechEnd;
-    Voice.onSpeechError = onSpeechError;
-    Voice.onSpeechResults = onSpeechResults;
-    Voice.onSpeechPartialResults = onSpeechPartialResults;
-    Voice.onSpeechVolumeChanged = onSpeechVolumeChanged;
-
+    mountedRef.current = true;
     return () => {
-      Voice.removeAllListeners();
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      mountedRef.current = false;
+      cleanupVoice();
     };
   }, []);
 
-  const onSpeechStart = (e: SpeechStartEvent) => {
-    console.log('🎤 Speech recognition started', e);
-    setIsListening(true);
-    setError(null);
-  };
+  const safeSetState = useCallback((updater: () => void) => {
+    if (mountedRef.current) {
+      updater();
+    }
+  }, []);
 
-  const onSpeechRecognized = (e: SpeechRecognizedEvent) => {
-    console.log('🎯 Speech recognized', e);
-  };
-
-  const onSpeechEnd = (e: SpeechEndEvent) => {
-    console.log('🛑 Speech recognition ended', e);
-    setIsListening(false);
-    setPartialTranscript('');
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  // Cleanup hoàn toàn Voice service
+  const cleanupVoice = async () => {
+    try {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      Voice.removeAllListeners();
+      await Voice.cancel();
+      await Voice.stop();
+      await Voice.destroy();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      sessionActiveRef.current = false;
+      console.log('🧹 Voice cleanup completed');
+    } catch (err) {
+      // Không log cleanup errors
     }
   };
 
-  const onSpeechError = (e: SpeechErrorEvent) => {
-    console.error('❌ Speech recognition error', e);
-    const errorCode = e.error?.code?.toString() || '';
-    const errorMessage = e.error?.message || 'Lỗi nhận dạng giọng nói';
+  // Setup Voice service từ đầu
+  const setupVoice = async () => {
+    try {
+      // Cleanup trước
+      await cleanupVoice();
+      
+      // Setup listeners mới
+      Voice.onSpeechStart = (e: SpeechStartEvent) => {
+        console.log('🎤 Speech recognition started', e);
+        sessionActiveRef.current = true;
+        safeSetState(() => {
+          setIsListening(true);
+          setError(null);
+        });
+      };
 
-    setError(errorMessage);
-    setIsListening(false);
-    setPartialTranscript('');
+      Voice.onSpeechEnd = (e: SpeechEndEvent) => {
+        console.log('🛑 Speech recognition ended', e);
+        sessionActiveRef.current = false;
+        safeSetState(() => {
+          setIsListening(false);
+          setPartialTranscript('');
+        });
+        
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+      };
 
-    if (errorCode !== '7') {
-      Alert.alert(
-        'Lỗi nhận dạng giọng nói',
-        getErrorMessage(errorCode),
-        [{ text: 'OK' }]
-      );
+      Voice.onSpeechError = (e: SpeechErrorEvent) => {
+        const errorCode = e.error?.code?.toString() || '';
+        
+        // Chỉ log các lỗi nghiêm trọng, bỏ qua error code 5, 7, 11
+        if (!['5', '7', '11'].includes(errorCode)) {
+          console.error('❌ Speech recognition error', e);
+        }
+        
+        sessionActiveRef.current = false;
+        safeSetState(() => {
+          setIsListening(false);
+          setPartialTranscript('');
+        });
+        
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        
+        // Ignore common errors
+        if (['5', '7', '11'].includes(errorCode)) {
+          return;
+        }
+        
+        const errorMessage = getErrorMessage(errorCode);
+        safeSetState(() => setError(errorMessage));
+      };
+
+      Voice.onSpeechResults = (e: SpeechResultsEvent) => {
+        console.log('📝 Speech results', e);
+        if (e.value && e.value.length > 0) {
+          console.log('📤 Voice result received:', e.value[0]);
+          sessionActiveRef.current = false;
+          safeSetState(() => {
+            setResults(e.value || []);
+            setPartialTranscript('');
+            setIsListening(false);
+          });
+          
+          // Cleanup ngay sau khi có kết quả
+          setTimeout(cleanupVoice, 500);
+        }
+      };
+
+      Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
+        if (e.value && e.value.length > 0) {
+          safeSetState(() => setPartialTranscript(e.value?.[0] || ''));
+        }
+      };
+
+      Voice.onSpeechRecognized = () => {
+        console.log('🎯 Speech recognized');
+      };
+
+      Voice.onSpeechVolumeChanged = () => {};
+
+      console.log('✅ Voice service setup completed');
+    } catch (err) {
+      console.error('❌ Voice setup error:', err);
+      throw err;
     }
-  };
-
-  const onSpeechResults = (e: SpeechResultsEvent) => {
-    console.log('📝 Speech results', e);
-    if (e.value && e.value.length > 0) {
-      setResults(e.value);
-      setPartialTranscript('');
-      setIsListening(false);
-      isListeningRef.current = false;
-    }
-  };
-
-  const onSpeechPartialResults = (e: SpeechResultsEvent) => {
-    console.log('📝 Partial results', e);
-    if (e.value && e.value.length > 0) {
-      setPartialTranscript(e.value[0]);
-    }
-  };
-
-  const onSpeechVolumeChanged = (_: any) => {
-    // Volume indicator placeholder
   };
 
   const getErrorMessage = (errorCode: string): string => {
@@ -114,107 +163,168 @@ const useVoice = (): UseVoiceReturn => {
       '2': 'Lỗi âm thanh. Vui lòng kiểm tra microphone.',
       '3': 'Lỗi máy chủ. Vui lòng thử lại sau.',
       '4': 'Không có quyền truy cập microphone.',
-      '5': 'Dịch vụ nhận dạng giọng nói không khả dụng.',
       '6': 'Không đủ bộ nhớ.',
-      '7': 'Không nhận dạng được giọng nói. Vui lòng nói rõ hơn.',
       '8': 'Dịch vụ bận. Vui lòng thử lại.',
       '9': 'Dữ liệu không đủ để nhận dạng.',
     };
     return errorMessages[errorCode] || 'Đã xảy ra lỗi không xác định.';
   };
 
-  const startListening = async (): Promise<void> => {
-    if (isListeningRef.current) {
-      console.log('🎧 Đã đang nghe, không gọi lại');
+  const checkPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+        );
+        
+        if (!granted) {
+          const result = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+            {
+              title: 'Quyền truy cập Microphone',
+              message: 'Ứng dụng cần quyền truy cập microphone để nhận dạng giọng nói',
+              buttonNeutral: 'Hỏi lại sau',
+              buttonNegative: 'Hủy',
+              buttonPositive: 'Đồng ý',
+            }
+          );
+          return result === PermissionsAndroid.RESULTS.GRANTED;
+        }
+        return true;
+      } catch (err) {
+        console.error('Permission check error:', err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const startListening = useCallback(async (): Promise<void> => {
+    if (isOperatingRef.current || sessionActiveRef.current) {
+      console.log('🎧 Already operating, ignoring');
       return;
     }
 
     try {
-      setError(null);
-      setResults([]);
-      setPartialTranscript('');
-      setIsListening(true);
-      isListeningRef.current = true;
-      // ⚠️ Hủy trước để đảm bảo không chồng lệnh
-      try {
-        await Voice.cancel();
-        await new Promise(resolve => setTimeout(resolve, 300)); // delay ngắn
-      } catch (cancelErr) {
-        console.warn('⚠️ Voice.cancel() error (không nghiêm trọng)', cancelErr);
+      isOperatingRef.current = true;
+      
+      // Check permission
+      const hasPermission = await checkPermission();
+      if (!hasPermission) {
+        Alert.alert('Lỗi', 'Cần quyền truy cập microphone');
+        return;
       }
+
+      // Setup Voice service từ đầu
+      await setupVoice();
+
+      // Reset states
+      safeSetState(() => {
+        setError(null);
+        setResults([]);
+        setPartialTranscript('');
+      });
 
       console.log('🎙️ Bắt đầu nhận dạng giọng nói...');
-      await Voice.start('vi-VN'); // ❗ Không gọi setIsListening(true) ở đây
+      
+      // Start recognition
+      await Voice.start('vi-VN');
 
-      // Đặt timeout auto stop sau 10s
+      // Set timeout
       timeoutRef.current = setTimeout(async () => {
-        if (isListening) {
-          console.log('⏰ Auto stopping voice recognition after timeout');
+        if (sessionActiveRef.current) {
+          console.log('⏰ Auto stopping after timeout');
           await stopListening();
         }
-      }, 10000);
+      }, 8000);
+
     } catch (err) {
-      console.error('❌ Lỗi khi bắt đầu nhận dạng giọng nói:', err);
-      setIsListening(false);
-      setError('Không thể bắt đầu nhận dạng giọng nói. Vui lòng kiểm tra microphone.');
-      Alert.alert('Lỗi', 'Không thể bắt đầu nhận dạng giọng nói. Vui lòng kiểm tra quyền microphone.', [{ text: 'OK' }]);
+      console.error('❌ Start listening error:', err);
+      safeSetState(() => {
+        setError('Không thể bắt đầu nhận dạng giọng nói');
+        setIsListening(false);
+      });
+      sessionActiveRef.current = false;
+    } finally {
+      isOperatingRef.current = false;
     }
-  };
+  }, [safeSetState]);
 
-  const stopListening = async (): Promise<void> => {
+  const stopListening = useCallback(async (): Promise<void> => {
+    if (isOperatingRef.current) {
+      return;
+    }
+
     try {
+      isOperatingRef.current = true;
       console.log('🛑 Dừng nhận dạng');
-      setIsListening(false);
-
+      
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 300)); // Delay tránh lỗi
-      await Voice.cancel(); // Dừng tất cả mọi thứ
+      await Voice.stop();
+      
+      // Cleanup sau khi stop
+      setTimeout(async () => {
+        await cleanupVoice();
+        safeSetState(() => setIsListening(false));
+      }, 500);
+      
     } catch (err) {
-      console.error('❌ Lỗi khi dừng nhận dạng:', err);
+      // Không log stop errors
+    } finally {
+      sessionActiveRef.current = false;
+      isOperatingRef.current = false;
     }
-  };
+  }, [safeSetState]);
 
-  const cancelListening = async (): Promise<void> => {
+  const cancelListening = useCallback(async (): Promise<void> => {
     try {
       console.log('❌ Hủy nhận dạng');
-      setIsListening(false);
-      setPartialTranscript('');
-      setResults([]);
-
+      
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await Voice.cancel();
+      await cleanupVoice();
+      
+      safeSetState(() => {
+        setIsListening(false);
+        setPartialTranscript('');
+        setResults([]);
+      });
+      
     } catch (err) {
-      console.error('❌ Lỗi khi hủy nhận dạng:', err);
+      // Không log cancel errors
+    } finally {
+      sessionActiveRef.current = false;
+      isOperatingRef.current = false;
     }
-  };
+  }, [safeSetState]);
 
-  const destroyRecognizer = async (): Promise<void> => {
+  const destroyRecognizer = useCallback(async (): Promise<void> => {
     try {
-      console.log('🗑️ Hủy hoàn toàn voice recognizer');
-      setIsListening(false);
-      setPartialTranscript('');
-      setResults([]);
-      setError(null);
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-
-      await Voice.destroy();
+      console.log('🗑️ Destroying voice recognizer');
+      
+      await cleanupVoice();
+      
+      safeSetState(() => {
+        setIsListening(false);
+        setPartialTranscript('');
+        setResults([]);
+        setError(null);
+      });
+      
     } catch (err) {
-      console.error('❌ Lỗi khi hủy Voice.destroy()', err);
+      // Không log destroy errors
+    } finally {
+      sessionActiveRef.current = false;
+      isOperatingRef.current = false;
     }
-  };
+  }, [safeSetState]);
 
   return {
     isListening,
@@ -227,6 +337,5 @@ const useVoice = (): UseVoiceReturn => {
     destroyRecognizer,
   };
 };
-
 
 export default useVoice;
