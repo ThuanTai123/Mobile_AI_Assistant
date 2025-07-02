@@ -157,7 +157,7 @@ def chat_endpoint():
             payload = {
                 "model": "nousresearch/deephermes-3-llama-3-8b-preview:free",
                 "messages": [
-                    {"role": "system", "content": "Bạn là Ruby – trợ lý ảo lanh lợi, trả lời NGẮN GỌN, đúng trọng tâm, súc tích, kèm chút hài hước dí dỏm. Không nói lan man, không giải thích thừa. Ưu tiên trả lời nhanh, vui, dễ hiểu."},
+                    {"role": "system", "content": "Bạn là Ruby – trợ lý ảo lanh lợi, trả lời CỰC KỲ NGẮN GỌN, đúng trọng tâm, súc tích. Không nói lan man, không giải thích thừa. Ưu tiên trả lời nhanh.Trả lời đúng chính tả Tiếng Việt"},
                     {"role": "user", "content": user_message}
                 ]
             }

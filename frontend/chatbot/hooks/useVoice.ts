@@ -30,9 +30,9 @@ const useVoice = (): UseVoiceReturn => {
   const [partialTranscript, setPartialTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isListeningRef = useRef(false);
 
   useEffect(() => {
-    // Thiết lập các event listeners
     Voice.onSpeechStart = onSpeechStart;
     Voice.onSpeechRecognized = onSpeechRecognized;
     Voice.onSpeechEnd = onSpeechEnd;
@@ -42,8 +42,7 @@ const useVoice = (): UseVoiceReturn => {
     Voice.onSpeechVolumeChanged = onSpeechVolumeChanged;
 
     return () => {
-      // Cleanup khi component unmount
-      Voice.destroy().then(Voice.removeAllListeners);
+      Voice.removeAllListeners();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
@@ -64,8 +63,6 @@ const useVoice = (): UseVoiceReturn => {
     console.log('🛑 Speech recognition ended', e);
     setIsListening(false);
     setPartialTranscript('');
-    
-    // Clear timeout nếu có
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -74,19 +71,16 @@ const useVoice = (): UseVoiceReturn => {
 
   const onSpeechError = (e: SpeechErrorEvent) => {
     console.error('❌ Speech recognition error', e);
-    
-    // ✅ SỬA: Xử lý error object một cách an toàn
     const errorCode = e.error?.code?.toString() || '';
     const errorMessage = e.error?.message || 'Lỗi nhận dạng giọng nói';
-    
+
     setError(errorMessage);
     setIsListening(false);
     setPartialTranscript('');
-    
-    // Hiển thị lỗi cho user (trừ code 7 - No match)
+
     if (errorCode !== '7') {
       Alert.alert(
-        'Lỗi nhận dạng giọng nói', 
+        'Lỗi nhận dạng giọng nói',
         getErrorMessage(errorCode),
         [{ text: 'OK' }]
       );
@@ -98,6 +92,8 @@ const useVoice = (): UseVoiceReturn => {
     if (e.value && e.value.length > 0) {
       setResults(e.value);
       setPartialTranscript('');
+      setIsListening(false);
+      isListeningRef.current = false;
     }
   };
 
@@ -108,9 +104,8 @@ const useVoice = (): UseVoiceReturn => {
     }
   };
 
-  const onSpeechVolumeChanged = (e: any) => {
-    // console.log('🔊 Volume changed', e);
-    // Có thể sử dụng để hiển thị volume indicator
+  const onSpeechVolumeChanged = (_: any) => {
+    // Volume indicator placeholder
   };
 
   const getErrorMessage = (errorCode: string): string => {
@@ -125,86 +120,99 @@ const useVoice = (): UseVoiceReturn => {
       '8': 'Dịch vụ bận. Vui lòng thử lại.',
       '9': 'Dữ liệu không đủ để nhận dạng.',
     };
-    
     return errorMessages[errorCode] || 'Đã xảy ra lỗi không xác định.';
   };
 
   const startListening = async (): Promise<void> => {
+    if (isListeningRef.current) {
+      console.log('🎧 Đã đang nghe, không gọi lại');
+      return;
+    }
+
     try {
       setError(null);
       setResults([]);
       setPartialTranscript('');
-      
-      console.log('🚀 Starting voice recognition...');
-      
-      await Voice.start('vi-VN');
-      
-      // Tự động dừng sau 10 giây để tránh lãng phí tài nguyên
+      setIsListening(true);
+      isListeningRef.current = true;
+      // ⚠️ Hủy trước để đảm bảo không chồng lệnh
+      try {
+        await Voice.cancel();
+        await new Promise(resolve => setTimeout(resolve, 300)); // delay ngắn
+      } catch (cancelErr) {
+        console.warn('⚠️ Voice.cancel() error (không nghiêm trọng)', cancelErr);
+      }
+
+      console.log('🎙️ Bắt đầu nhận dạng giọng nói...');
+      await Voice.start('vi-VN'); // ❗ Không gọi setIsListening(true) ở đây
+
+      // Đặt timeout auto stop sau 10s
       timeoutRef.current = setTimeout(async () => {
         if (isListening) {
           console.log('⏰ Auto stopping voice recognition after timeout');
           await stopListening();
         }
       }, 10000);
-      
     } catch (err) {
-      console.error('❌ Error starting voice recognition:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Không thể bắt đầu nhận dạng giọng nói';
-      setError(errorMessage);
-      Alert.alert(
-        'Lỗi', 
-        'Không thể bắt đầu nhận dạng giọng nói. Vui lòng kiểm tra quyền microphone.',
-        [{ text: 'OK' }]
-      );
+      console.error('❌ Lỗi khi bắt đầu nhận dạng giọng nói:', err);
+      setIsListening(false);
+      setError('Không thể bắt đầu nhận dạng giọng nói. Vui lòng kiểm tra microphone.');
+      Alert.alert('Lỗi', 'Không thể bắt đầu nhận dạng giọng nói. Vui lòng kiểm tra quyền microphone.', [{ text: 'OK' }]);
     }
   };
 
   const stopListening = async (): Promise<void> => {
     try {
-      console.log('🛑 Stopping voice recognition');
-      await Voice.stop();
-      
+      console.log('🛑 Dừng nhận dạng');
+      setIsListening(false);
+
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+
+      await new Promise(resolve => setTimeout(resolve, 300)); // Delay tránh lỗi
+      await Voice.cancel(); // Dừng tất cả mọi thứ
     } catch (err) {
-      console.error('❌ Error stopping voice recognition:', err);
+      console.error('❌ Lỗi khi dừng nhận dạng:', err);
     }
   };
 
   const cancelListening = async (): Promise<void> => {
     try {
-      console.log('❌ Canceling voice recognition');
-      await Voice.cancel();
+      console.log('❌ Hủy nhận dạng');
       setIsListening(false);
       setPartialTranscript('');
       setResults([]);
-      
+
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await Voice.cancel();
     } catch (err) {
-      console.error('❌ Error canceling voice recognition:', err);
+      console.error('❌ Lỗi khi hủy nhận dạng:', err);
     }
   };
 
   const destroyRecognizer = async (): Promise<void> => {
     try {
-      console.log('🗑️ Destroying voice recognizer');
-      await Voice.destroy();
+      console.log('🗑️ Hủy hoàn toàn voice recognizer');
       setIsListening(false);
       setPartialTranscript('');
       setResults([]);
       setError(null);
-      
+
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+
+      await Voice.destroy();
     } catch (err) {
-      console.error('❌ Error destroying voice recognizer:', err);
+      console.error('❌ Lỗi khi hủy Voice.destroy()', err);
     }
   };
 
@@ -219,5 +227,6 @@ const useVoice = (): UseVoiceReturn => {
     destroyRecognizer,
   };
 };
+
 
 export default useVoice;
