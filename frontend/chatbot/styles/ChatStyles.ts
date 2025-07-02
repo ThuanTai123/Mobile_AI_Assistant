@@ -52,6 +52,18 @@ sectionTitle: {
   fontWeight: 'bold',
   color: '#495057',
 },
+themeToggleButton: {
+    backgroundColor: "#e0f7fa",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  themeToggleText: {
+    color: "#333",
+    fontSize: 14,
+  },
 headerButtons: {
   flexDirection: 'row',
   alignItems: 'center',

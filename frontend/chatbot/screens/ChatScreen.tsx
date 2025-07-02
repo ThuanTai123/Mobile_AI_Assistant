@@ -135,6 +135,8 @@ const ChatScreen = () => {
     ])
   }
 
+  const [isDarkBackground, setIsDarkBackground] = useState(false)
+
   const handleSendMessage = async () => {
     const textToSend = inputText.trim()
     if (!textToSend) return
@@ -156,12 +158,44 @@ const ChatScreen = () => {
   )
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[
+    styles.container,
+    { backgroundColor: isDarkBackground ? "#121212" : "#ffffff" },
+  ]}
+>
       <StatusBar backgroundColor="#4ECDC4" barStyle="dark-content" />
       <KeyboardAvoidingView style={styles.keyboardContainer} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>RUBY ASSISTANT</Text>
-        </View>
+        <View
+  style={[
+    styles.header,
+    { backgroundColor: isDarkBackground ? "#1e1e1e" : "#4ECDC4" },
+  ]}
+>
+  <Text
+    style={[
+      styles.headerText,
+      { color: isDarkBackground ? "#ffffff" : "#000000" },
+    ]}
+  >
+    RUBY ASSISTANT
+  </Text>
+
+  {/* ✅ Nút chuyển nền ở góc phải header */}
+  <TouchableOpacity
+    onPress={() => setIsDarkBackground(!isDarkBackground)}
+    style={{
+      backgroundColor: isDarkBackground ? "#333" : "#e0f7fa",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
+    }}
+  >
+    <Text style={{ color: isDarkBackground ? "#fff" : "#333" }}>
+      {isDarkBackground ? "Nền sáng" : "Nền tối"}
+    </Text>
+  </TouchableOpacity>
+</View>
+
 
         <FlatList
           ref={flatListRef}
@@ -203,6 +237,7 @@ const ChatScreen = () => {
           isSpeaking={isSpeaking}
           startListening={startListening}
           stopListening={stopListening}
+          backgroundColor={isDarkBackground ? "#1e1e1e" : "#ffffff"} // thêm dòng này
         />
       </KeyboardAvoidingView>
 

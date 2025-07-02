@@ -13,6 +13,7 @@ interface BottomActionsProps {
   isSpeaking: boolean
   startListening: () => void
   stopListening: () => void
+  backgroundColor?: string // ← thêm dòng này
 }
 
 export const BottomActions: React.FC<BottomActionsProps> = ({
@@ -23,9 +24,10 @@ export const BottomActions: React.FC<BottomActionsProps> = ({
   isSpeaking,
   startListening,
   stopListening,
+  backgroundColor
 }) => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container,  backgroundColor && { backgroundColor }]}>
       <View style={styles.actionRow}>
         {/* Lịch sử */}
         <TouchableOpacity style={styles.actionButton} onPress={onHistoryPress}>
