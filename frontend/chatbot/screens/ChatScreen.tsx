@@ -164,6 +164,7 @@ const ChatScreen = () => {
     headerText: {
       ...styles.headerText,
       color: isDarkTheme ? "#ffffff" : "#000",
+      fontWeight: "bold" as const,
     },
     messagesList: {
       ...styles.messagesList,

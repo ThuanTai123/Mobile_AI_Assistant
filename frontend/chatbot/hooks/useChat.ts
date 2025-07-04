@@ -109,24 +109,28 @@ export const useChat = (onApiError?: () => void) => {
     }
 
     try {
-      // Check for app opening
-      const { opened, appName } = await checkAndOpenApp(textToSend);
-      if (opened) {
-        await handleBotResponse(`Đã mở ứng dụng ${appName} cho bạn.`);
+      // Check for device commands
+      const deviceResponse = await handleDeviceCommand(textToSend);
+      if (deviceResponse) {
+        await handleBotResponse(deviceResponse);
         return;
+      }
+      
+      // Check for app opening
+      const { opened, appName,message } = await checkAndOpenApp(textToSend);
+      if (appName) {
+        if (opened) {
+          await handleBotResponse(`✅ Đã mở ứng dụng "${appName}" cho bạn.`);
+        } else {
+          await handleBotResponse(`⚠️ ${message || `Không thể mở ứng dụng "${appName}".`}`);
+        }
+        return; // ⛔ Không gọi API /chat nữa
       }
 
       // 2. Mở nhạc bằng YouTube
       const musicResponse = await handleOpenMusic(textToSend);  // textToSend hoặc msg
       if (musicResponse) {
         await handleBotResponse(musicResponse);
-        return;
-      }
-
-      // Check for device commands
-      const deviceResponse = await handleDeviceCommand(textToSend);
-      if (deviceResponse) {
-        await handleBotResponse(deviceResponse);
         return;
       }
 

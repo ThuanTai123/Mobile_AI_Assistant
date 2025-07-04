@@ -80,7 +80,7 @@ class StudyModeManager {
     this.isActive = true
     Vibration.vibrate([100, 50, 100])
 
-    return `✅ Đã bật chế độ ${mode}!\n🔇 Im lặng: ${config.silentMode ? "Bật" : "Tắt"}\n⏰ Pomodoro: ${config.pomodoroMinutes} phút`
+    return `✅ Đã bật chế độ học tập!\n🔇 Âm thanh: 0%\n⏰ Pomodoro: ${config.pomodoroMinutes} phút`
   }
 
   async deactivateStudyMode(): Promise<string> {

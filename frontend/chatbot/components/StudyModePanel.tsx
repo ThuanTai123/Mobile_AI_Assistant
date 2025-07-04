@@ -2,9 +2,8 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { View, Text, TouchableOpacity, Modal } from "react-native"
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import styles from "../styles/ChatStyles"
 
 interface StudyModePanelProps {
   visible: boolean
@@ -16,90 +15,6 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
   const [activeMode, setActiveMode] = useState<string | null>(null)
   const [sessionTime, setSessionTime] = useState(0)
   const [isActive, setIsActive] = useState(false)
-
-  // Dynamic styles based on theme
-  const getThemeStyles = () => ({
-    overlay: [
-      styles.overlay,
-      {
-        backgroundColor: isDarkTheme ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.5)",
-      },
-    ],
-    modalContainer: [
-      styles.modalContainer,
-      {
-        backgroundColor: isDarkTheme ? "#1a1a1a" : "#fff",
-      },
-    ],
-    modalHeader: [
-      styles.modalHeader,
-      {
-        borderBottomColor: isDarkTheme ? "#333" : "#eee",
-      },
-    ],
-    modalTitle: [
-      styles.modalTitle,
-      {
-        color: isDarkTheme ? "#fff" : "#333",
-      },
-    ],
-    statusCard: [
-      styles.statusCard,
-      {
-        backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
-      },
-    ],
-    activeMode: [
-      styles.activeMode,
-      {
-        color: isDarkTheme ? "#4ECDC4" : "#4ECDC4",
-      },
-    ],
-    sessionInfo: [
-      styles.sessionInfo,
-      {
-        color: isDarkTheme ? "#ccc" : "#666",
-      },
-    ],
-    inactiveText: [
-      styles.inactiveText,
-      {
-        color: isDarkTheme ? "#888" : "#999",
-      },
-    ],
-    statsCard: [
-      styles.statsCard,
-      {
-        backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
-      },
-    ],
-    statNumber: [
-      styles.statNumber,
-      {
-        color: isDarkTheme ? "#4ECDC4" : "#4ECDC4",
-      },
-    ],
-    statLabel: [
-      styles.statLabel,
-      {
-        color: isDarkTheme ? "#ccc" : "#666",
-      },
-    ],
-    tipsCard: [
-      styles.tipsCard,
-      {
-        backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
-      },
-    ],
-    tipText: [
-      styles.tipText,
-      {
-        color: isDarkTheme ? "#ccc" : "#666",
-      },
-    ],
-  })
-
-  const themeStyles = getThemeStyles()
 
   // Timer effect
   useEffect(() => {
@@ -133,12 +48,68 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
     setSessionTime(0)
   }
 
+  // Dynamic styles based on theme
+  const dynamicStyles = StyleSheet.create({
+    overlay: {
+      ...styles.overlay,
+      backgroundColor: isDarkTheme ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.5)",
+    },
+    modalContainer: {
+      ...styles.modalContainer,
+      backgroundColor: isDarkTheme ? "#1a1a1a" : "#fff",
+    },
+    modalHeader: {
+      ...styles.modalHeader,
+      borderBottomColor: isDarkTheme ? "#333" : "#eee",
+    },
+    modalTitle: {
+      ...styles.modalTitle,
+      color: isDarkTheme ? "#fff" : "#333",
+    },
+    statusCard: {
+      ...styles.statusCard,
+      backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
+    },
+    activeMode: {
+      ...styles.activeMode,
+      color: "#4ECDC4",
+    },
+    sessionInfo: {
+      ...styles.sessionInfo,
+      color: isDarkTheme ? "#ccc" : "#666",
+    },
+    inactiveText: {
+      ...styles.inactiveText,
+      color: isDarkTheme ? "#888" : "#999",
+    },
+    statsCard: {
+      ...styles.statsCard,
+      backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
+    },
+    statNumber: {
+      ...styles.statNumber,
+      color: "#4ECDC4",
+    },
+    statLabel: {
+      ...styles.statLabel,
+      color: isDarkTheme ? "#ccc" : "#666",
+    },
+    tipsCard: {
+      ...styles.tipsCard,
+      backgroundColor: isDarkTheme ? "#2d2d2d" : "#fff",
+    },
+    tipText: {
+      ...styles.tipText,
+      color: isDarkTheme ? "#ccc" : "#666",
+    },
+  })
+
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={themeStyles.overlay}>
-        <View style={themeStyles.modalContainer}>
-          <View style={themeStyles.modalHeader}>
-            <Text style={themeStyles.modalTitle}>🎓 Chế độ học tập</Text>
+      <View style={dynamicStyles.overlay}>
+        <View style={dynamicStyles.modalContainer}>
+          <View style={dynamicStyles.modalHeader}>
+            <Text style={dynamicStyles.modalTitle}>🎓 Chế độ học tập</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={isDarkTheme ? "#ccc" : "#666"} />
             </TouchableOpacity>
@@ -146,20 +117,20 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
 
           <View style={styles.content}>
             {/* Current Session Status */}
-            <View style={themeStyles.statusCard}>
+            <View style={dynamicStyles.statusCard}>
               {activeMode ? (
                 <View style={styles.activeSession}>
-                  <Text style={themeStyles.activeMode}>
+                  <Text style={dynamicStyles.activeMode}>
                     {activeMode === "focus" ? "🎯 Tập trung" : activeMode === "review" ? "📚 Ôn tập" : "✍️ Ghi chú"}
                   </Text>
-                  <Text style={themeStyles.sessionInfo}>Thời gian: {formatTime(sessionTime)}</Text>
-                  <Text style={themeStyles.sessionInfo}>Trạng thái: {isActive ? "Đang hoạt động" : "Tạm dừng"}</Text>
+                  <Text style={dynamicStyles.sessionInfo}>Thời gian: {formatTime(sessionTime)}</Text>
+                  <Text style={dynamicStyles.sessionInfo}>Trạng thái: {isActive ? "Đang hoạt động" : "Tạm dừng"}</Text>
                   <TouchableOpacity style={[styles.actionButton, styles.deactivateButton]} onPress={stopSession}>
                     <Text style={styles.buttonText}>Kết thúc phiên</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <Text style={themeStyles.inactiveText}>Chưa có phiên học tập nào đang hoạt động</Text>
+                <Text style={dynamicStyles.inactiveText}>Chưa có phiên học tập nào đang hoạt động</Text>
               )}
             </View>
 
@@ -174,7 +145,6 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
                     <Text style={styles.modeIcon}>🎯</Text>
                     <Text style={styles.modeText}>Tập trung</Text>
                   </TouchableOpacity>
-
                   <TouchableOpacity
                     style={[styles.modeButton, { backgroundColor: "#45B7B8" }]}
                     onPress={() => startSession("review")}
@@ -182,7 +152,6 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
                     <Text style={styles.modeIcon}>📚</Text>
                     <Text style={styles.modeText}>Ôn tập</Text>
                   </TouchableOpacity>
-
                   <TouchableOpacity
                     style={[styles.modeButton, { backgroundColor: "#96CEB4" }]}
                     onPress={() => startSession("notes")}
@@ -195,31 +164,31 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
             )}
 
             {/* Study Stats */}
-            <View style={themeStyles.statsCard}>
-              <Text style={themeStyles.modalTitle}>📊 Thống kê học tập</Text>
+            <View style={dynamicStyles.statsCard}>
+              <Text style={dynamicStyles.modalTitle}>📊 Thống kê học tập</Text>
               <View style={styles.statsGrid}>
                 <View style={styles.statItem}>
-                  <Text style={themeStyles.statNumber}>0</Text>
-                  <Text style={themeStyles.statLabel}>Phiên hôm nay</Text>
+                  <Text style={dynamicStyles.statNumber}>0</Text>
+                  <Text style={dynamicStyles.statLabel}>Phiên hôm nay</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={themeStyles.statNumber}>0</Text>
-                  <Text style={themeStyles.statLabel}>Phút học</Text>
+                  <Text style={dynamicStyles.statNumber}>0</Text>
+                  <Text style={dynamicStyles.statLabel}>Phút học</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={themeStyles.statNumber}>0</Text>
-                  <Text style={themeStyles.statLabel}>Ghi chú</Text>
+                  <Text style={dynamicStyles.statNumber}>0</Text>
+                  <Text style={dynamicStyles.statLabel}>Ghi chú</Text>
                 </View>
               </View>
             </View>
 
             {/* Study Tips */}
-            <View style={themeStyles.tipsCard}>
-              <Text style={themeStyles.modalTitle}>💡 Mẹo học tập</Text>
-              <Text style={themeStyles.tipText}>• Sử dụng kỹ thuật Pomodoro: 25 phút tập trung, 5 phút nghỉ</Text>
-              <Text style={themeStyles.tipText}>• Tạo ghi chú bằng giọng nói để ghi lại ý tưởng nhanh chóng</Text>
-              <Text style={themeStyles.tipText}>• Ôn tập thường xuyên để củng cố kiến thức</Text>
-              <Text style={themeStyles.tipText}>• Tạo nhắc nhở để không bỏ lỡ thời gian học quan trọng</Text>
+            <View style={dynamicStyles.tipsCard}>
+              <Text style={dynamicStyles.modalTitle}>💡 Mẹo học tập</Text>
+              <Text style={dynamicStyles.tipText}>• Sử dụng kỹ thuật Pomodoro: 25 phút tập trung, 5 phút nghỉ</Text>
+              <Text style={dynamicStyles.tipText}>• Tạo ghi chú bằng giọng nói để ghi lại ý tưởng nhanh chóng</Text>
+              <Text style={dynamicStyles.tipText}>• Ôn tập thường xuyên để củng cố kiến thức</Text>
+              <Text style={dynamicStyles.tipText}>• Tạo nhắc nhở để không bỏ lỡ thời gian học quan trọng</Text>
             </View>
           </View>
         </View>
@@ -227,3 +196,158 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
     </Modal>
   )
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    width: "100%",
+    maxHeight: "90%",
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    padding: 5,
+  },
+  content: {
+    padding: 20,
+  },
+  statusCard: {
+    padding: 20,
+    borderRadius: 15,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  activeSession: {
+    alignItems: "center",
+  },
+  activeMode: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  sessionInfo: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  inactiveText: {
+    fontSize: 16,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  actionButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginTop: 15,
+  },
+  deactivateButton: {
+    backgroundColor: "#FF6B6B",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  modeSelection: {
+    marginBottom: 20,
+  },
+  modeButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    flexWrap: "wrap",
+  },
+  modeButton: {
+    width: "30%",
+    aspectRatio: 1,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  modeIcon: {
+    fontSize: 30,
+    marginBottom: 5,
+  },
+  modeText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  statsCard: {
+    padding: 20,
+    borderRadius: 15,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 15,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 5,
+  },
+  tipsCard: {
+    padding: 20,
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  tipText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+})

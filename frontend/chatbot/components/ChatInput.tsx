@@ -72,13 +72,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <Ionicons name="send" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-      {isListening && partialTranscript !== "" && (
-        <View style={themeStyles.partialTranscriptContainer}>
-          <Text style={themeStyles.partialTranscriptText}>
-            🎙️ Đang nói: <Text style={themeStyles.partialTranscriptBold}>{partialTranscript}</Text>
-          </Text>
-        </View>
-      )}
     </View>
   );
 };
