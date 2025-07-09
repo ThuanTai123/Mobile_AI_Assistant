@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { activateStudyMode, deactivateStudyMode, getStudyStatus, StudySession } from "../utils/StudyModeManager"
 
 interface StudyModePanelProps {
   visible: boolean
@@ -14,18 +15,57 @@ interface StudyModePanelProps {
 export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose, isDarkTheme = false }) => {
   const [activeMode, setActiveMode] = useState<string | null>(null)
   const [sessionTime, setSessionTime] = useState(0)
+  // Fix: Update type definition to match what getStudyStatus() returns
+  const [studyStatus, setStudyStatus] = useState<{ isActive: boolean; currentSession: StudySession | null }>({ 
+    isActive: false, 
+    currentSession: null 
+  });
   const [isActive, setIsActive] = useState(false)
 
-  // Timer effect
+  // Load study status when component mounts or becomes visible
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (isActive && activeMode) {
+    const loadStudyStatus = () => {
+      const status = getStudyStatus();
+      setStudyStatus(status);
+      setIsActive(status.isActive);
+      
+      if (status.currentSession) {
+        setActiveMode(status.currentSession.mode);
+        // Calculate session time if there's an active session
+        const startTime = new Date(status.currentSession.startTime).getTime();
+        const currentTime = new Date().getTime();
+        const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+        setSessionTime(elapsedSeconds);
+      } else {
+        setActiveMode(null);
+        setSessionTime(0);
+      }
+    };
+
+    if (visible) {
+      loadStudyStatus();
+      // Set up interval to refresh status periodically when panel is visible
+      const statusInterval = setInterval(loadStudyStatus, 1000);
+      return () => clearInterval(statusInterval);
+    }
+  }, [visible]);
+
+  // Timer effect - only run when there's an active session
+  useEffect(() => {
+    let interval: any
+    // Fix: Add null check for currentSession
+    if (isActive && activeMode && studyStatus.currentSession) {
       interval = setInterval(() => {
-        setSessionTime((time) => time + 1)
+        if (studyStatus.currentSession) { // Additional null check
+          const startTime = new Date(studyStatus.currentSession.startTime).getTime();
+          const currentTime = new Date().getTime();
+          const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+          setSessionTime(elapsedSeconds);
+        }
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [isActive, activeMode])
+  }, [isActive, activeMode, studyStatus.currentSession])
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -34,19 +74,31 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
+  type StudyMode = "focus" | "study" | "work";
+
   // Start study session
-  const startSession = (mode: string) => {
-    setActiveMode(mode)
-    setIsActive(true)
-    setSessionTime(0)
-  }
+  const startSession = async (mode: StudyMode) => {
+    await activateStudyMode(mode);
+    
+    // Immediately update local state
+    const status = getStudyStatus();
+    setStudyStatus(status);
+    setActiveMode(mode);
+    setIsActive(true);
+    setSessionTime(0);
+  };
 
   // Stop study session
-  const stopSession = () => {
-    setIsActive(false)
-    setActiveMode(null)
-    setSessionTime(0)
-  }
+  const stopSession = async () => {
+    await deactivateStudyMode();
+    
+    // Immediately update local state
+    const status = getStudyStatus();
+    setStudyStatus(status);
+    setIsActive(false);
+    setActiveMode(null);
+    setSessionTime(0);
+  };
 
   // Dynamic styles based on theme
   const dynamicStyles = StyleSheet.create({
@@ -118,10 +170,11 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
           <View style={styles.content}>
             {/* Current Session Status */}
             <View style={dynamicStyles.statusCard}>
-              {activeMode ? (
+              {/* Fix: Add proper null checks */}
+              {activeMode && studyStatus.currentSession ? (
                 <View style={styles.activeSession}>
                   <Text style={dynamicStyles.activeMode}>
-                    {activeMode === "focus" ? "🎯 Tập trung" : activeMode === "review" ? "📚 Ôn tập" : "✍️ Ghi chú"}
+                    {activeMode === "focus" ? "🎯 Tập trung" : activeMode === "work" ? "✍️ Ghi chú" : "📚 Ôn tập"}
                   </Text>
                   <Text style={dynamicStyles.sessionInfo}>Thời gian: {formatTime(sessionTime)}</Text>
                   <Text style={dynamicStyles.sessionInfo}>Trạng thái: {isActive ? "Đang hoạt động" : "Tạm dừng"}</Text>
@@ -134,8 +187,8 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
               )}
             </View>
 
-            {/* Mode Selection */}
-            {!activeMode && (
+            {/* Mode Selection - Only show when no active session */}
+            {!activeMode && !studyStatus.currentSession && (
               <View style={styles.modeSelection}>
                 <View style={styles.modeButtons}>
                   <TouchableOpacity
@@ -147,14 +200,14 @@ export const StudyModePanel: React.FC<StudyModePanelProps> = ({ visible, onClose
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modeButton, { backgroundColor: "#45B7B8" }]}
-                    onPress={() => startSession("review")}
+                    onPress={() => startSession("study")}
                   >
                     <Text style={styles.modeIcon}>📚</Text>
                     <Text style={styles.modeText}>Ôn tập</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modeButton, { backgroundColor: "#96CEB4" }]}
-                    onPress={() => startSession("notes")}
+                    onPress={() => startSession("work")}
                   >
                     <Text style={styles.modeIcon}>✍️</Text>
                     <Text style={styles.modeText}>Ghi chú</Text>

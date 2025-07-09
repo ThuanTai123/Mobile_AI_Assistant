@@ -1,13 +1,13 @@
 ✅ Thời tiết hiện tại (không có ngày)
 Thời tiết ở Hà Nội hiện tại
 
-"Sài Gòn hôm nay có mưa không?"
+Hôm nay Sài gòn có mưa không
 
-"Trời Đà Nẵng hiện tại có nắng không?"
+Trời Đà Nẵng hiện tại có nắng không?
 
 📅 Dự báo thời tiết ngày cụ thể
 
-"Cho mình biết dự báo ở Huế vào ngày 26 tháng 6 nhé."
+Thời tiết ở Huế ngày 5 tháng 7 thế nào
 
 "Ngày 25-06, thời tiết tại Huế ra sao?"
 
@@ -18,16 +18,14 @@ Thời tiết ở Hà Nội hiện tại
 
 "Ngày mai trời có nắng ở TP Hồ Chí Minh không?"
 
-Thời tiết ở Huế ngày 27/6/2025 thế nào?
 
 Chỉnh âm lượng đến mức 60%
 Chỉnh độ sáng đến mức 60%
 Âm lượng hiện tại là bao nhiêu
 Độ sáng màn hình hiện tại là bao nhiêu
 mở youtube
-Nhắc tôi đi ngủ trong 10 giây nữa
+Tạo ghi chú đi ăn cơm 11:25
 Độ sáng hiện tại
 Chào
 Bật chế độ học tập
-tắt chế độ học tập
 Build apk :eas build -p android --profile preview

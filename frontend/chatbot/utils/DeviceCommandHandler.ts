@@ -76,6 +76,9 @@ export const handleStudyCommands = async (message: string): Promise<string | nul
 
 export const handleDeviceCommand = async (message: string): Promise<string | null> => {
   const msg = message.toLowerCase()
+  .replace(/wi[\s-]?fi/g, 'wifi') // chuẩn hóa: wi-fi, wi fi => wifi
+  .replace(/\s+/g, ' ')           // xoá khoảng trắng thừa
+
 
   const phoneResponse = await handlePhoneCommands(message)
   if (phoneResponse) return phoneResponse

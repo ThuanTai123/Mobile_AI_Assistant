@@ -33,6 +33,7 @@ import {
 } from "../utils/Notifications"
 import { initializePhoneHandler } from "../utils/PhoneCallHandler"
 import { ChatInput } from "../components/ChatInput"
+import { wakeUpServer } from "../api/chat"
 
 interface Message {
   id: number
@@ -65,6 +66,7 @@ const ChatScreen = () => {
 
   useEffect(() => {
     const init = async () => {
+      await wakeUpServer()
       await checkTables()
       await createChatTable()
       await createNoteTable()

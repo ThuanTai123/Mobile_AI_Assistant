@@ -25,7 +25,7 @@ export interface StudySession {
 
 class StudyModeManager {
   private currentSession: StudySession | null = null
-  private pomodoroTimer: NodeJS.Timeout | null = null
+  private pomodoroTimer: any = null
   private isActive = false
 
   private defaultConfigs: Record<string, StudyModeConfig> = {

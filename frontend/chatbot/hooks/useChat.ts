@@ -267,7 +267,16 @@ export const useChat = (onApiError?: () => void) => {
       }
     }
   };
+  useEffect(() => {
+  const welcomeMessage: Message = {
+    id: generateId(),
+    text: "Xin chào, tôi có thể giúp gì cho bạn?",
+    sender: "bot",
+  };
 
+  setMessages([welcomeMessage]);
+}, []);
+  
   return {
     messages,
     inputText,

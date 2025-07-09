@@ -17,13 +17,26 @@ export interface BotResponse {
   audio_url?: string
 }
 
+export const wakeUpServer = async () => {
+  try {
+    await axios.post('http://<YOUR_FLASK_SERVER>/chat', {
+      message: 'wake_up_ping',
+    });
+    console.log('✅ Server is waking up...');
+  } catch (error:unknown) {
+    const err = error as Error
+    console.log('⚠️ Failed to wake up server:', err.message);
+  }
+};
+
 export const processMessage = async (message: string): Promise<BotResponse> => {
   console.log("🌐 API Call starting for message:", message);
   
   const deviceReply = await handleDeviceCommand(message)
   if (deviceReply) return { reply: deviceReply }
 
-  const isWeatherQuery = /thời tiết|trời/.test(message.toLowerCase())
+  const weatherKeywords = ["thời tiết", "trời", "mưa", "nắng", "nhiệt độ", "có mưa", "có nắng", "trời mưa", "trời nắng"];
+  const isWeatherQuery = weatherKeywords.some(kw => message.toLowerCase().includes(kw));
   const isNote = /ghi chú/.test(message.toLowerCase())
   const isTask = /nhắc việc|nhắc tôi/.test(message.toLowerCase())
   const isAppointment = /lịch hẹn|hẹn gặp|đặt lịch/.test(message.toLowerCase())
@@ -32,10 +45,11 @@ export const processMessage = async (message: string): Promise<BotResponse> => {
     let endpoint = '';
     let payload = {};
 
-    if (isWeatherQuery) {
+    if (isWeatherQuery) {    
       endpoint = '/weather';
       const city = await getCurrentCity()
       payload = { message, city };
+      console.log("Calling weather with city:", city)
     } else if (isNote) {
       endpoint = '/note';
       payload = { content: message };
